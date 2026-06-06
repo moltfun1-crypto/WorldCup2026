@@ -294,7 +294,7 @@ function renderNowNext() {
 
   const cards = [];
   if (primary) cards.push(nnCard(primary, isLive(primary.status) ? 'Live now' : 'Next up', isLive(primary.status)));
-  if (eng && eng.id !== primary?.id) cards.push(nnCard(eng, 'Next England game', false));
+  if (eng && eng.id !== primary?.id) cards.push(nnCard(eng, 'England', false));
 
   if (!cards.length) { host.hidden = true; host.innerHTML = ''; return; }
   host.hidden = false;
