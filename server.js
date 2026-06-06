@@ -17,7 +17,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 let cache = { at: 0, data: null };
 let standingsCache = { at: 0, data: null };
 
-// Normalise an upstream (or fallback) match into the shape the frontend wants.
 // UK channel for a knockout match, from the announced round allocation:
 // Round of 32, Round of 16 & Semi-finals → BBC; Quarter-finals → ITV;
 // Third-place play-off → BBC; Final → BBC & ITV simulcast.
