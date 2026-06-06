@@ -2,9 +2,9 @@
 // with kickoff times in UK / Koh Phangan / Bali (+ the visitor's own nation).
 
 const ZONES = [
-  { key: 'uk', label: 'UK', tz: 'Europe/London' },
   { key: 'phangan', label: 'Koh Phangan', tz: 'Asia/Bangkok' }, // ICT, UTC+7
   { key: 'bali', label: 'Bali', tz: 'Asia/Makassar' }, // WITA, UTC+8
+  { key: 'uk', label: 'UK', tz: 'Europe/London' },
 ];
 
 // --- Where is the visitor? Resolve their nation for the "local" (gold) row. ---
