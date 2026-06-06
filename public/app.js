@@ -31,6 +31,14 @@ const localNation = (() => {
   return { code: code ? code.toLowerCase() : null, name, tz: localTz };
 })();
 const localZone = { key: 'local', label: localNation.name, tz: localTz, local: true, code: localNation.code };
+const UK_ZONE = ZONES.find((z) => z.key === 'uk');
+
+// Compact mode shows only "Your Time" + UK; full mode shows all four zones.
+const COMPACT_KEY = 'stv:compact';
+let compact = localStorage.getItem(COMPACT_KEY) === '1';
+function activeZones() {
+  return compact ? [localZone, UK_ZONE] : [...ZONES, localZone];
+}
 
 // Favourite nations (persisted in localStorage).
 const FAV_KEY = 'stv:favourites';
@@ -43,12 +51,22 @@ const el = (sel) => document.querySelector(sel);
 init();
 
 async function init() {
+  document.body.classList.add('view-fixtures');
   renderLegend();
   await loadMatches(true);
   bindControls();
   loadStandings();
   setInterval(loadMatches, 60_000); // re-fetch so scores + Live/Finished update
   setInterval(loadStandings, 120_000);
+}
+
+// Switch between Fixtures and Group Tables (used on mobile; both show on desktop).
+function setView(view) {
+  document.body.classList.toggle('view-tables', view === 'tables');
+  document.body.classList.toggle('view-fixtures', view !== 'tables');
+  document.querySelectorAll('.view-tab').forEach((t) =>
+    t.setAttribute('aria-selected', String(t.dataset.view === view))
+  );
 }
 
 // Fetch the match list and re-render. On the first load it also builds the
@@ -112,7 +130,7 @@ function renderStandings(groups) {
 }
 
 function renderLegend() {
-  const zones = [...ZONES, localZone];
+  const zones = activeZones();
   el('#zonesLegend').innerHTML = zones
     .map((z) => {
       const flag = z.local && z.code ? `<img class="zone-flag" src="https://flagcdn.com/h20/${z.code}.png" alt="" />` : '';
@@ -153,17 +171,66 @@ function bindControls() {
   el('#groupFilter').addEventListener('change', (e) => { state.group = e.target.value; render(); });
   el('#dayFilter').addEventListener('change', (e) => { state.day = e.target.value; render(); });
 
-  // Star / unstar a nation (delegated).
+  // Compact-times toggle.
+  const ct = el('#compactToggle');
+  ct.setAttribute('aria-pressed', String(compact));
+  ct.addEventListener('click', () => {
+    compact = !compact;
+    localStorage.setItem(COMPACT_KEY, compact ? '1' : '0');
+    ct.setAttribute('aria-pressed', String(compact));
+    renderLegend();
+    render();
+  });
+
+  // Delegated clicks inside the match list: star toggle, or click a nation name
+  // to filter to its fixtures.
   el('#matchList').addEventListener('click', (e) => {
     const star = e.target.closest('.star');
-    if (!star) return;
-    const team = star.dataset.team;
-    favs.has(team) ? favs.delete(team) : favs.add(team);
-    saveFavs();
-    buildFilters();
-    render();
-    loadStandings();
+    if (star) {
+      const team = star.dataset.team;
+      favs.has(team) ? favs.delete(team) : favs.add(team);
+      saveFavs();
+      buildFilters();
+      render();
+      loadStandings();
+      return;
+    }
+    const link = e.target.closest('.team-link');
+    if (link) applyNationFilter(link.dataset.filter);
   });
+  el('#matchList').addEventListener('keydown', (e) => {
+    const link = e.target.closest('.team-link');
+    if (link && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); applyNationFilter(link.dataset.filter); }
+  });
+
+  // "Show all" clears every active filter.
+  el('#filterBanner').addEventListener('click', (e) => {
+    if (e.target.closest('.fb-clear')) clearFilters();
+  });
+
+  // Fixtures / Group Tables view tabs.
+  document.querySelectorAll('.view-tab').forEach((t) =>
+    t.addEventListener('click', () => setView(t.dataset.view))
+  );
+}
+
+function applyNationFilter(nation) {
+  state.nation = nation;
+  el('#nationFilter').value = nation;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearFilters() {
+  state.nation = 'all';
+  state.group = 'all';
+  state.day = 'all';
+  state.search = '';
+  el('#nationFilter').value = 'all';
+  el('#groupFilter').value = 'all';
+  el('#dayFilter').value = 'all';
+  el('#search').value = '';
+  render();
 }
 
 function filtered() {
@@ -204,6 +271,62 @@ function render() {
     for (const m of g.items) html += matchCard(m);
   }
   host.innerHTML = html;
+
+  renderNowNext();
+  renderFilterBanner();
+}
+
+// Top strip: the live match if any, otherwise the next kickoff. Reflects all
+// fixtures regardless of the current filter.
+function renderNowNext() {
+  const host = el('#nowNext');
+  const now = Date.now();
+  const live = state.matches.filter((m) => isLive(m.status));
+  let m, label;
+  if (live.length) { m = live[0]; label = 'Live now'; }
+  else {
+    m = state.matches
+      .filter((x) => new Date(x.utcDate).getTime() > now)
+      .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))[0];
+    label = 'Next up';
+  }
+  if (!m) { host.hidden = true; return; }
+
+  const liveNow = isLive(m.status);
+  const score = liveNow && m.score?.home != null
+    ? `<span class="nn-score">${m.score.home}–${m.score.away}</span>`
+    : '<span class="nn-v">v</span>';
+  const meta = liveNow
+    ? (m.status === 'PAUSED' ? 'Half-time' : 'Live')
+    : `Kicks off in ${fmtDuration(new Date(m.utcDate).getTime() - now)}`;
+
+  host.hidden = false;
+  host.className = 'now-next' + (liveNow ? ' live' : '');
+  host.innerHTML = `
+    <span class="nn-label">${liveNow ? '● ' : ''}${label}</span>
+    <span class="nn-teams">${nnTeam(m.home)}${score}${nnTeam(m.away)}</span>
+    <span class="nn-meta">${meta}</span>
+    <span class="nn-chan">${channelBadge(m.channel)}</span>`;
+}
+
+function nnTeam(t) {
+  const flag = t.crest ? `<img src="${t.crest}" alt="" />` : '<span class="placeholder"></span>';
+  return `<span class="nn-team">${flag}<b>${t.name}</b></span>`;
+}
+
+function renderFilterBanner() {
+  const b = el('#filterBanner');
+  const parts = [];
+  if (state.nation === '__favs__') parts.push('★ Favourites');
+  else if (state.nation !== 'all') parts.push(state.nation);
+  if (state.group !== 'all') parts.push(state.group);
+  if (state.day !== 'all') parts.push(fmtDayShort(state.day));
+  if (state.search) parts.push(`“${state.search}”`);
+
+  if (!parts.length) { b.hidden = true; b.innerHTML = ''; return; }
+  b.hidden = false;
+  b.innerHTML = `<span class="fb-text">Showing <b>${parts.join(' · ')}</b></span>
+    <button class="fb-clear" type="button">✕ Show all fixtures</button>`;
 }
 
 function dayHeading(g) {
@@ -218,7 +341,7 @@ function dayHeading(g) {
 }
 
 function matchCard(m) {
-  const zones = [...ZONES, localZone];
+  const zones = activeZones();
   const times = zones
     .map((z) => `<div class="time-row ${z.local ? 'local' : ''}">
         <span class="tz">${z.local ? 'Your Time' : z.label}</span>
@@ -241,6 +364,7 @@ function matchCard(m) {
     <div class="match-times">${times}</div>
     <div class="match-side">
       ${statusBadge(m)}
+      ${countdownEl(m)}
       <div class="channels">${channelBadge(m.channel)}</div>
     </div>
   </article>`;
@@ -254,8 +378,31 @@ function teamRow(team, score, winner) {
   const star = canFav
     ? `<button class="star ${favs.has(team.name) ? 'on' : ''}" data-team="${team.name}" title="Favourite ${team.name}" aria-label="Favourite ${team.name}">${favs.has(team.name) ? '★' : '☆'}</button>`
     : '';
+  // Real nations are clickable to filter to their fixtures; placeholders aren't.
+  const name = canFav
+    ? `<span class="team-name team-link" data-filter="${team.name}" role="button" tabindex="0" title="Show ${team.name} fixtures">${team.name}</span>`
+    : `<span class="team-name">${team.name}</span>`;
   const scoreEl = score != null ? `<span class="score ${winner ? 'win' : ''}">${score}</span>` : '';
-  return `<div class="team">${star}${flag}<span class="team-name">${team.name}</span>${scoreEl}</div>`;
+  return `<div class="team">${star}${flag}${name}${scoreEl}</div>`;
+}
+
+// Countdown for an upcoming fixture ("Kicks off in 3h 20m"). Refreshes each
+// 60s render cycle. Hidden once a match is live/finished.
+function countdownEl(m) {
+  if (isPlayed(m.status) || m.status === 'FINISHED') return '';
+  const diff = new Date(m.utcDate).getTime() - Date.now();
+  if (diff <= 0) return '';
+  return `<span class="countdown">Kicks off in ${fmtDuration(diff)}</span>`;
+}
+
+function fmtDuration(ms) {
+  const mins = Math.floor(ms / 60_000);
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  const mm = mins % 60;
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${mm}m`;
+  return `${mm}m`;
 }
 
 const isLive = (s) => s === 'IN_PLAY' || s === 'PAUSED';

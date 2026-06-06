@@ -24,6 +24,8 @@
   </header>
 
   <main class="wrap">
+    <section id="nowNext" class="now-next" aria-live="polite" hidden></section>
+
     <section class="controls" aria-label="Filters">
       <input id="search" class="search" type="search" placeholder="Search team or venue…" autocomplete="off" />
       <label class="select-wrap"><span class="sr-only">Nation</span>
@@ -35,9 +37,17 @@
       <label class="select-wrap"><span class="sr-only">Day</span>
         <select id="dayFilter" class="select" aria-label="Filter by day"></select>
       </label>
+      <button id="compactToggle" class="toggle-btn" type="button" aria-pressed="false" title="Show only your time + UK">🕒 Compact times</button>
     </section>
 
+    <div id="filterBanner" class="filter-banner" hidden></div>
+
     <p class="source-note" id="sourceNote" hidden></p>
+
+    <div class="view-tabs" role="tablist">
+      <button class="view-tab" data-view="fixtures" role="tab" aria-selected="true">Fixtures</button>
+      <button class="view-tab" data-view="tables" role="tab" aria-selected="false">Group Tables</button>
+    </div>
 
     <div class="layout">
       <section id="matchList" class="match-list" aria-live="polite"></section>
