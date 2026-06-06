@@ -214,10 +214,17 @@ body {
 
 .match {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px 18px; display: grid; gap: 14px; box-shadow: var(--shadow);
-  grid-template-columns: 1.4fr 1.3fr auto; align-items: center;
+  padding: 16px 18px; display: grid; gap: 8px 18px; box-shadow: var(--shadow);
+  grid-template-columns: 1.5fr 1.3fr auto; align-items: start;
+  grid-template-areas:
+    "teams times side"
+    "meta  times side";
   transition: border-color 0.15s, transform 0.15s;
 }
+.match-teams { grid-area: teams; }
+.match-times { grid-area: times; }
+.team-meta { grid-area: meta; }
+.match-side { grid-area: side; }
 .match:hover { border-color: #313c54; transform: translateY(-1px); }
 
 .match-teams { display: flex; flex-direction: column; gap: 8px; }
@@ -325,24 +332,26 @@ body {
   .view-tabs { margin-bottom: 12px; }
   .view-tab { padding: 8px; font-size: 0.85rem; }
 
-  .match { grid-template-columns: 1fr; gap: 8px; padding: 11px 12px; }
+  /* Card becomes a flex stack; meta + channel + countdown share the last line. */
+  .match { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; padding: 11px 12px; }
 
   /* Both teams on one line: "Mexico v South Africa". */
-  .match-teams { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .match-teams { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .team { font-size: 0.92rem; gap: 7px; flex: 0 1 auto; }
   .team img, .team .placeholder { width: 22px; height: 15px; }
   .match-teams .team + .team::before { content: 'v'; color: var(--text-dim); font-weight: 600; margin-right: 6px; }
   .score { margin-left: 0; font-size: 0.92rem; }
-  .match-teams .team-meta { flex-basis: 100%; margin-top: 2px; font-size: 0.7rem; }
 
   /* Times become a 2-up grid (1-up on very narrow) instead of 4 stacked rows. */
-  .match-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 3px 10px; }
+  .match-times { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 3px 10px; }
   .time-row { gap: 6px; }
   .time-row .tz { width: auto; font-size: 0.64rem; }
   .time-row .t { font-size: 0.82rem; }
   .time-row .d { font-size: 0.64rem; }
 
-  .match-side { flex-direction: row; align-items: center; flex-wrap: wrap; justify-content: flex-start; width: 100%; gap: 8px; }
+  /* Last line: group · stadium  …  channel + countdown. */
+  .team-meta { flex: 1 1 auto; min-width: 0; margin-top: 0; font-size: 0.7rem; }
+  .match-side { flex: 0 0 auto; width: auto; margin-left: auto; flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; }
   .status-badge { font-size: 0.6rem; padding: 3px 7px; }
   .countdown { font-size: 0.66rem; }
 
