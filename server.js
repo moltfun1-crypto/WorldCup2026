@@ -58,6 +58,12 @@ function shape(match, source) {
       name: away,
       crest: match.awayTeam?.crest || flagUrl(match.awayTeam?.code),
     },
+    // Live/final score (null before kickoff). football-data keeps the running
+    // score in score.fullTime during play and after full time.
+    score: {
+      home: match.score?.fullTime?.home ?? null,
+      away: match.score?.fullTime?.away ?? null,
+    },
     // Free API tier omits venue — backfill from bundled schedule by teams.
     venue: match.venue || venueForTeams(home, away),
     // Prefer the channel baked into bundled data; otherwise look up by teams;

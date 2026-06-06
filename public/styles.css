@@ -35,8 +35,8 @@ body {
 .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark {
-  font-size: 32px; width: 56px; height: 56px; display: grid; place-items: center;
-  background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px;
+  height: 58px; width: auto; object-fit: contain; display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
 }
 .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
 .tagline { margin: 0; color: var(--text-dim); font-size: 0.85rem; }
@@ -162,6 +162,13 @@ body {
 .team img { width: 26px; height: 18px; object-fit: cover; border-radius: 3px; background: var(--bg-elev); }
 .team .placeholder { width: 26px; height: 18px; border-radius: 3px; background: var(--bg-elev); display: inline-block; }
 .team-name { min-width: 0; }
+.score {
+  margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 800;
+  font-size: 1.05rem; color: var(--text-dim); min-width: 20px; text-align: right;
+}
+.score.win { color: var(--text); }
+.match.is-live { border-color: rgba(255, 90, 106, 0.5); box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--live); }
+.match.is-live.is-fav { box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--live); }
 .star {
   flex: 0 0 auto; background: none; border: none; cursor: pointer; padding: 0;
   font-size: 1rem; line-height: 1; color: var(--text-dim); transition: color 0.15s, transform 0.1s;

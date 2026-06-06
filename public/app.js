@@ -44,25 +44,34 @@ init();
 
 async function init() {
   renderLegend();
+  await loadMatches(true);
+  bindControls();
+  loadStandings();
+  setInterval(loadMatches, 60_000); // re-fetch so scores + Live/Finished update
+  setInterval(loadStandings, 120_000);
+}
+
+// Fetch the match list and re-render. On the first load it also builds the
+// filters and shows the data-source note; later refreshes keep filters intact.
+async function loadMatches(initial = false) {
   try {
     const res = await fetch('/api/matches');
     const json = await res.json();
     state.matches = (json.matches || []).sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
-    if (state.matches[0]?.source === 'fallback') {
+    if (initial && state.matches[0]?.source === 'fallback') {
       const note = el('#sourceNote');
       note.hidden = false;
       note.textContent = 'Showing the bundled official schedule. Add a football-data.org API key for live scores & knockout teams.';
     }
   } catch {
-    el('#sourceNote').hidden = false;
-    el('#sourceNote').textContent = 'Could not load matches. Is the server running?';
+    if (initial) {
+      el('#sourceNote').hidden = false;
+      el('#sourceNote').textContent = 'Could not load matches. Is the server running?';
+    }
+    return;
   }
-  buildFilters();
+  if (initial) buildFilters();
   render();
-  bindControls();
-  loadStandings();
-  setInterval(render, 60_000);
-  setInterval(loadStandings, 120_000);
 }
 
 async function loadStandings() {
@@ -218,10 +227,15 @@ function matchCard(m) {
     .join('');
 
   const faved = favs.has(m.home.name) || favs.has(m.away.name);
-  return `<article class="match ${faved ? 'is-fav' : ''}">
+  const showScore = isPlayed(m.status) && m.score?.home != null;
+  const live = isLive(m.status);
+  // Highlight the leading side once a result exists.
+  const winHome = showScore && m.score.home > m.score.away;
+  const winAway = showScore && m.score.away > m.score.home;
+  return `<article class="match ${faved ? 'is-fav' : ''} ${live ? 'is-live' : ''}">
     <div class="match-teams">
-      ${teamRow(m.home)}
-      ${teamRow(m.away)}
+      ${teamRow(m.home, showScore ? m.score.home : null, winHome)}
+      ${teamRow(m.away, showScore ? m.score.away : null, winAway)}
       <div class="team-meta">${[m.group, m.venue].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="match-times">${times}</div>
@@ -232,7 +246,7 @@ function matchCard(m) {
   </article>`;
 }
 
-function teamRow(team) {
+function teamRow(team, score, winner) {
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
@@ -240,8 +254,12 @@ function teamRow(team) {
   const star = canFav
     ? `<button class="star ${favs.has(team.name) ? 'on' : ''}" data-team="${team.name}" title="Favourite ${team.name}" aria-label="Favourite ${team.name}">${favs.has(team.name) ? '★' : '☆'}</button>`
     : '';
-  return `<div class="team">${star}${flag}<span class="team-name">${team.name}</span></div>`;
+  const scoreEl = score != null ? `<span class="score ${winner ? 'win' : ''}">${score}</span>` : '';
+  return `<div class="team">${star}${flag}<span class="team-name">${team.name}</span>${scoreEl}</div>`;
 }
+
+const isLive = (s) => s === 'IN_PLAY' || s === 'PAUSED';
+const isPlayed = (s) => isLive(s) || s === 'FINISHED' || s === 'AWARDED';
 
 // --- Channel logos ----------------------------------------------------------
 const bbcBlocks = () => `<span class="bbc-blocks"><i>B</i><i>B</i><i>C</i></span>`;
@@ -266,11 +284,17 @@ function channelBadge(channel) {
 }
 
 function statusBadge(m) {
+  // Prefer the live API status when present (updates on each 60s refresh).
+  if (m.status === 'IN_PLAY') return `<span class="status-badge live">● Live</span>`;
+  if (m.status === 'PAUSED') return `<span class="status-badge live">● Half-time</span>`;
+  if (m.status === 'FINISHED' || m.status === 'AWARDED') return `<span class="status-badge finished">Full-time</span>`;
+  if (m.status === 'POSTPONED' || m.status === 'SUSPENDED' || m.status === 'CANCELLED')
+    return `<span class="status-badge">${m.status[0] + m.status.slice(1).toLowerCase()}</span>`;
+  // Otherwise fall back to time-based labelling for upcoming fixtures.
   const start = new Date(m.utcDate).getTime();
   const now = Date.now();
-  const end = start + 115 * 60_000;
-  if (now >= start && now <= end) return `<span class="status-badge live">● Live</span>`;
-  if (now > end) return `<span class="status-badge finished">Finished</span>`;
+  if (now >= start && now <= start + 130 * 60_000) return `<span class="status-badge live">● Live</span>`;
+  if (now > start) return `<span class="status-badge finished">Full-time</span>`;
   if (dayKey(m.utcDate) === dayKey(new Date().toISOString())) return `<span class="status-badge today">Today</span>`;
   return `<span class="status-badge">Upcoming</span>`;
 }
