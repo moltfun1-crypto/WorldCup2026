@@ -147,7 +147,7 @@ function buildFilters() {
   )].sort();
   const favOpt = favs.size ? `<option value="__favs__">★ My favourites (${favs.size})</option>` : '';
   el('#nationFilter').innerHTML =
-    `<option value="all">Fav</option>` + favOpt +
+    `<option value="all">Nations</option>` + favOpt +
     nations.map((n) => `<option value="${n}">${n}</option>`).join('');
   el('#nationFilter').value = state.nation;
 
