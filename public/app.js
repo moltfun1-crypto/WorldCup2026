@@ -307,7 +307,7 @@ function nnCard(m, label, liveNow) {
     : '<span class="nn-v">v</span>';
   const meta = liveNow
     ? (m.status === 'PAUSED' ? 'Half-time' : 'Live')
-    : `<span class="nn-countdown" data-kickoff="${m.utcDate}">KO in ${fmtDuration(new Date(m.utcDate).getTime() - Date.now())}</span>`;
+    : `<span class="nn-countdown" data-kickoff="${m.utcDate}">${fmtDuration(new Date(m.utcDate).getTime() - Date.now())}</span>`;
   return `<div class="nn-item ${liveNow ? 'live' : ''}">
     <span class="nn-label">${liveNow ? '● ' : ''}${label}</span>
     <span class="nn-teams">${nnTeam(m.home)}${score}${nnTeam(m.away)}</span>
@@ -393,13 +393,13 @@ function teamRow(team, score, winner) {
   return `<div class="team">${star}${flag}${name}${scoreEl}</div>`;
 }
 
-// Countdown for an upcoming fixture ("KO in 3h 20m 15s"). The text ticks
+// Countdown for an upcoming fixture ("3h 20m 15s"). The text ticks
 // every second via tick(); the 60s refresh keeps statuses/scores current.
 function countdownEl(m) {
   if (isPlayed(m.status) || m.status === 'FINISHED') return '';
   const diff = new Date(m.utcDate).getTime() - Date.now();
   if (diff <= 0) return '';
-  return `<span class="countdown" data-kickoff="${m.utcDate}">KO in ${fmtDuration(diff)}</span>`;
+  return `<span class="countdown" data-kickoff="${m.utcDate}">${fmtDuration(diff)}</span>`;
 }
 
 // Update every countdown's text once a second without a full re-render.
@@ -407,7 +407,7 @@ function tick() {
   const now = Date.now();
   document.querySelectorAll('[data-kickoff]').forEach((node) => {
     const diff = new Date(node.dataset.kickoff).getTime() - now;
-    node.textContent = diff <= 0 ? 'Kicking off…' : `KO in ${fmtDuration(diff)}`;
+    node.textContent = diff <= 0 ? 'Kicking off…' : `${fmtDuration(diff)}`;
   });
 }
 
