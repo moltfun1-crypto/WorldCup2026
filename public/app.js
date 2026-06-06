@@ -179,16 +179,13 @@ function render() {
   const host = el('#matchList');
   el('#emptyState').hidden = list.length > 0;
 
-  // Group by UK day AND Thai/Indo day together, so every heading is accurate for
-  // all its matches. A UK day with both early-hours and evening kickoffs splits
-  // into two blocks (Thai/Indo same day vs next day) instead of showing a range.
+  // Group by Thai/Indo (Bangkok) day — the primary date. The UK line underneath
+  // may show two dates when a single Thai/Indo day spans two UK days.
   const days = [];
   let cur = null;
   for (const m of list) {
-    const ukDay = dayKey(m.utcDate);
     const asiaDay = asiaDayKey(m.utcDate);
-    const key = `${ukDay}|${asiaDay}`;
-    if (!cur || cur.key !== key) { cur = { key, dk: ukDay, items: [] }; days.push(cur); }
+    if (!cur || cur.key !== asiaDay) { cur = { key: asiaDay, items: [] }; days.push(cur); }
     cur.items.push(m);
   }
 
@@ -201,12 +198,13 @@ function render() {
 }
 
 function dayHeading(g) {
-  const uk = fmtDayLong(g.dk);
-  // Every match in this block shares the same Thai/Indo day, so any item is accurate.
+  // Primary: Thai/Indo date (all matches in the block share it).
   const asia = fmtDayLongInTz(g.items[0].utcDate, 'Asia/Bangkok');
+  // Secondary: UK date(s) — may be two when the Thai/Indo day spans two UK days.
+  const uk = [...new Set(g.items.map((m) => fmtDayLongInTz(m.utcDate, 'Europe/London')))].join(' / ');
   return `<h2 class="day-heading">
-    <span class="dh-line"><span class="dh-date">${uk}</span><span class="dh-tag uk">UK</span></span>
-    <span class="dh-line alt"><span class="dh-date">${asia}</span><span class="dh-tag">Thai / Indo</span></span>
+    <span class="dh-line"><span class="dh-date">${asia}</span><span class="dh-tag primary">Thai / Indo</span></span>
+    <span class="dh-line alt"><span class="dh-date">${uk}</span><span class="dh-tag">UK</span></span>
   </h2>`;
 }
 
