@@ -325,8 +325,8 @@ body {
 
   /* Compact controls: search + toggle share the first row, filters the second. */
   .controls { gap: 6px; }
-  .search { order: 1; flex: 1 1 auto; min-width: 0; padding: 8px 12px 8px 32px; font-size: 0.82rem; background-position: 11px center; }
-  .toggle-btn { order: 2; flex: 0 0 auto; padding: 8px 11px; font-size: 0.74rem; border-radius: 10px; }
+  .search { order: 1; flex: 0 1 46px; min-width: 0; padding: 8px 8px 8px 30px; font-size: 0.82rem; background-position: 9px center; }
+  .toggle-btn { order: 2; flex: 1 1 auto; padding: 8px 11px; font-size: 0.74rem; border-radius: 10px; }
   .select-wrap { order: 3; flex: 1 1 0; min-width: 0; }
   .select { width: 100%; max-width: none; padding: 8px 20px 8px 9px; font-size: 0.72rem; border-radius: 10px; }
   .select-wrap::after { right: 7px; font-size: 0.68rem; }

@@ -147,18 +147,18 @@ function buildFilters() {
   )].sort();
   const favOpt = favs.size ? `<option value="__favs__">★ My favourites (${favs.size})</option>` : '';
   el('#nationFilter').innerHTML =
-    `<option value="all">All nations</option>` + favOpt +
+    `<option value="all">Fav</option>` + favOpt +
     nations.map((n) => `<option value="${n}">${n}</option>`).join('');
   el('#nationFilter').value = state.nation;
 
   const groups = [...new Set(state.matches.map((m) => m.group).filter(Boolean))];
   el('#groupFilter').innerHTML =
-    `<option value="all">All groups</option>` + groups.map((g) => `<option value="${g}">${g}</option>`).join('');
+    `<option value="all">Groups</option>` + groups.map((g) => `<option value="${g}">${g}</option>`).join('');
   el('#groupFilter').value = state.group;
 
   const days = [...new Set(state.matches.map((m) => dayKey(m.utcDate)))];
   el('#dayFilter').innerHTML =
-    `<option value="all">All days</option>` + days.map((d) => `<option value="${d}">${fmtDayShort(d)}</option>`).join('');
+    `<option value="all">Days</option>` + days.map((d) => `<option value="${d}">${fmtDayShort(d)}</option>`).join('');
   el('#dayFilter').value = state.day;
 }
 
