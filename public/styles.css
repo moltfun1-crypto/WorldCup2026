@@ -217,14 +217,15 @@ body {
   padding: 16px 18px; display: grid; gap: 8px 18px; box-shadow: var(--shadow);
   grid-template-columns: 1.5fr 1.3fr auto; align-items: start;
   grid-template-areas:
-    "teams times side"
-    "meta  times side";
+    "teams times chan"
+    "meta  times status";
   transition: border-color 0.15s, transform 0.15s;
 }
 .match-teams { grid-area: teams; }
 .match-times { grid-area: times; }
-.team-meta { grid-area: meta; }
-.match-side { grid-area: side; }
+.team-meta { grid-area: meta; align-self: end; }
+.channels { grid-area: chan; justify-self: end; }
+.match-status { grid-area: status; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .match:hover { border-color: #313c54; transform: translateY(-1px); }
 
 .match-teams { display: flex; flex-direction: column; gap: 8px; }
@@ -260,7 +261,6 @@ body {
 .time-row.local .t { color: var(--accent); }
 
 /* Right column */
-.match-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .channels { display: flex; gap: 6px; }
 .channel-badge {
   font-size: 0.72rem; font-weight: 700; padding: 5px 9px; border-radius: 7px;
@@ -333,33 +333,39 @@ body {
   .view-tabs { margin-bottom: 12px; }
   .view-tab { padding: 8px; font-size: 0.85rem; }
 
-  /* Card becomes a flex stack; meta + channel + countdown share the last line. */
-  .match { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; padding: 11px 12px; }
+  /* Mobile layout: teams + channel, then meta + countdown, then times. */
+  .match {
+    display: grid; gap: 6px 10px; padding: 11px 12px; align-items: center;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "teams chan"
+      "meta  status"
+      "times times";
+  }
 
   /* Both teams on one line: "Mexico v South Africa". */
-  .match-teams { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .match-teams { grid-area: teams; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .team { font-size: 0.92rem; gap: 7px; flex: 0 1 auto; }
   .team img, .team .placeholder { width: 22px; height: 15px; }
   .match-teams .team + .team::before { content: 'v'; color: var(--text-dim); font-weight: 600; margin-right: 6px; }
   .score { margin-left: 0; font-size: 0.92rem; }
 
+  .channels { grid-area: chan; justify-self: end; }
+  .team-meta { grid-area: meta; min-width: 0; margin-top: 0; font-size: 0.7rem; }
+  .match-status { grid-area: status; justify-self: end; display: flex; align-items: center; gap: 8px; }
+  .status-badge { font-size: 0.6rem; padding: 3px 7px; }
+  .countdown { font-size: 0.66rem; }
+
   /* Swap the 4-row times for the compact date-grouped single line. */
   .match-times { display: none; }
   .match-times-compact {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
-    flex-basis: 100%; font-size: 0.7rem; color: var(--text);
+    grid-area: times; display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
+    font-size: 0.7rem; color: var(--text);
   }
   .ct-grp { display: inline-flex; align-items: baseline; gap: 5px; color: var(--text-dim); }
   .ct-grp + .ct-grp::before { content: '·'; color: var(--border); margin-right: 3px; }
   .ct-date { font-weight: 700; color: var(--accent); }
-  .ct-you .ct-date { color: var(--accent); }
   .ct-grp b { color: var(--text); font-variant-numeric: tabular-nums; }
-
-  /* Last line: group · stadium  …  channel + countdown. */
-  .team-meta { flex: 1 1 auto; min-width: 0; margin-top: 0; font-size: 0.7rem; }
-  .match-side { flex: 0 0 auto; width: auto; margin-left: auto; flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; }
-  .status-badge { font-size: 0.6rem; padding: 3px 7px; }
-  .countdown { font-size: 0.66rem; }
 
   /* Now/Next: one compact line per card. */
   .now-next { gap: 8px; }

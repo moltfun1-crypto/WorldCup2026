@@ -367,14 +367,11 @@ function matchCard(m) {
       ${teamRow(m.home, showScore ? m.score.home : null, winHome)}
       ${teamRow(m.away, showScore ? m.score.away : null, winAway)}
     </div>
+    <div class="channels">${channelBadge(m.channel)}</div>
     <div class="match-times">${times}</div>
     <div class="match-times-compact">${compactTimes(m)}</div>
     <div class="team-meta">${[m.group, m.venue].filter(Boolean).join(' · ')}</div>
-    <div class="match-side">
-      <div class="channels">${channelBadge(m.channel)}</div>
-      ${statusBadge(m)}
-      ${countdownEl(m)}
-    </div>
+    <div class="match-status">${statusBadge(m)}${countdownEl(m)}</div>
   </article>`;
 }
 
