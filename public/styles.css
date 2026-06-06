@@ -330,8 +330,8 @@ body {
   .select-wrap { order: 3; flex: 1 1 0; min-width: 0; }
   .select { width: 100%; max-width: none; padding: 8px 20px 8px 9px; font-size: 0.72rem; border-radius: 10px; }
   .select-wrap::after { right: 7px; font-size: 0.68rem; }
-  .view-tabs { margin-bottom: 12px; }
-  .view-tab { padding: 8px; font-size: 0.85rem; }
+  .view-tabs { margin-bottom: 12px; padding: 3px; }
+  .view-tab { padding: 6px; font-size: 0.72rem; }
 
   /* Mobile layout: teams + channel, then meta + countdown, then times. */
   .match {

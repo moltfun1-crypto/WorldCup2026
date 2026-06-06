@@ -383,16 +383,17 @@ function compactTimes(m) {
   const fixed = zones.filter((z) => !z.local);
   const byDate = new Map();
   for (const z of fixed) {
+    const label = z.label === 'Koh Phangan' ? 'Phangan' : z.label; // shorter on mobile
     const d = fmtDateTiny(m.utcDate, z.tz);
     if (!byDate.has(d)) byDate.set(d, []);
-    byDate.get(d).push(`${z.label} <b>${fmtTime(m.utcDate, z.tz)}</b>`);
+    byDate.get(d).push(`${label} <b>${fmtTime(m.utcDate, z.tz)}</b>`);
   }
   let html = [...byDate.entries()]
     .map(([d, zs]) => `<span class="ct-grp"><span class="ct-date">${d}</span> ${zs.join(' · ')}</span>`)
     .join('');
   const you = zones.find((z) => z.local);
   if (you) {
-    html += `<span class="ct-grp ct-you"><span class="ct-date">You</span> <b>${fmtTime(m.utcDate, you.tz)}</b> ${fmtDateTiny(m.utcDate, you.tz)}</span>`;
+    html += `<span class="ct-grp ct-you"><span class="ct-date">Local</span> <b>${fmtTime(m.utcDate, you.tz)}</b> ${fmtDateTiny(m.utcDate, you.tz)}</span>`;
   }
   return html;
 }
