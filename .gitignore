@@ -14,3 +14,6 @@ npm-debug.log*
 # Build / runtime
 dist/
 .cache/
+
+# WSL metadata
+*:Zone.Identifier
