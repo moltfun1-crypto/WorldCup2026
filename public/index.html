@@ -25,8 +25,15 @@
   <main class="wrap">
     <section class="controls" aria-label="Filters">
       <input id="search" class="search" type="search" placeholder="Search team or venue…" autocomplete="off" />
-      <div class="filter-group" id="groupFilter"></div>
-      <div class="filter-group" id="dayFilter"></div>
+      <label class="select-wrap"><span class="sr-only">Nation</span>
+        <select id="nationFilter" class="select" aria-label="Filter by nation"></select>
+      </label>
+      <label class="select-wrap"><span class="sr-only">Group</span>
+        <select id="groupFilter" class="select" aria-label="Filter by group"></select>
+      </label>
+      <label class="select-wrap"><span class="sr-only">Day</span>
+        <select id="dayFilter" class="select" aria-label="Filter by day"></select>
+      </label>
     </section>
 
     <p class="source-note" id="sourceNote" hidden></p>

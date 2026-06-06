@@ -1,17 +1,43 @@
 // SportsTV frontend — fetches matches from the local proxy and renders them
-// with kickoff times in UK / Bangkok / Bali (+ the visitor's own zone).
+// with kickoff times in UK / Koh Phangan / Bali (+ the visitor's own nation).
 
 const ZONES = [
   { key: 'uk', label: 'UK', tz: 'Europe/London' },
-  { key: 'bkk', label: 'Bangkok', tz: 'Asia/Bangkok' },
+  { key: 'phangan', label: 'Koh Phangan', tz: 'Asia/Bangkok' }, // ICT, UTC+7
   { key: 'bali', label: 'Bali', tz: 'Asia/Makassar' }, // WITA, UTC+8
 ];
 
+// --- Where is the visitor? Resolve their nation for the "local" (gold) row. ---
 const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const localLabel = (localTz.split('/').pop() || 'You').replace(/_/g, ' ');
+// Curated timezone → ISO country map (covers common zones; falls back to locale).
+const TZ_COUNTRY = {
+  'Europe/London': 'GB', 'Asia/Bangkok': 'TH', 'Asia/Makassar': 'ID', 'Asia/Jakarta': 'ID',
+  'Europe/Dublin': 'IE', 'Europe/Paris': 'FR', 'Europe/Madrid': 'ES', 'Europe/Berlin': 'DE',
+  'Europe/Amsterdam': 'NL', 'Europe/Lisbon': 'PT', 'Europe/Rome': 'IT', 'Europe/Brussels': 'BE',
+  'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US', 'America/Los_Angeles': 'US',
+  'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Mexico_City': 'MX',
+  'Australia/Sydney': 'AU', 'Asia/Singapore': 'SG', 'Asia/Dubai': 'AE', 'Asia/Kolkata': 'IN',
+  'Asia/Tokyo': 'JP', 'Asia/Hong_Kong': 'HK', 'Asia/Kuala_Lumpur': 'MY', 'Pacific/Auckland': 'NZ',
+};
+const localNation = (() => {
+  let code = TZ_COUNTRY[localTz];
+  if (!code) {
+    try { code = new Intl.Locale(navigator.language).maximize().region; } catch {}
+  }
+  let name = (localTz.split('/').pop() || 'Local').replace(/_/g, ' ');
+  if (code) {
+    try { name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || name; } catch {}
+  }
+  return { code: code ? code.toLowerCase() : null, name, tz: localTz };
+})();
+const localZone = { key: 'local', label: localNation.name, tz: localTz, local: true, code: localNation.code };
 
-const state = { matches: [], group: 'all', day: 'all', search: '' };
+// Favourite nations (persisted in localStorage).
+const FAV_KEY = 'stv:favourites';
+const favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
+function saveFavs() { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }
 
+const state = { matches: [], nation: 'all', group: 'all', day: 'all', search: '' };
 const el = (sel) => document.querySelector(sel);
 
 init();
@@ -35,8 +61,8 @@ async function init() {
   render();
   bindControls();
   loadStandings();
-  setInterval(render, 60_000); // refresh live/upcoming badges
-  setInterval(loadStandings, 120_000); // refresh group tables
+  setInterval(render, 60_000);
+  setInterval(loadStandings, 120_000);
 }
 
 async function loadStandings() {
@@ -44,9 +70,7 @@ async function loadStandings() {
     const res = await fetch('/api/standings');
     const json = await res.json();
     renderStandings(json.groups || []);
-  } catch {
-    /* leave whatever is there */
-  }
+  } catch { /* keep previous */ }
 }
 
 function renderStandings(groups) {
@@ -59,11 +83,11 @@ function renderStandings(groups) {
           <tbody>
             ${g.table
               .map(
-                (r, i) => `<tr class="${i < 2 ? 'qualify' : ''}">
+                (r, i) => `<tr class="${i < 2 ? 'qualify' : ''} ${favs.has(r.name) ? 'fav' : ''}">
                   <td class="pos">${r.pos}</td>
                   <td class="tl team-cell">
                     ${r.crest ? `<img src="${r.crest}" alt="" loading="lazy" />` : '<span class="placeholder"></span>'}
-                    <span>${r.name}</span>
+                    <span>${favs.has(r.name) ? '★ ' : ''}${r.name}</span>
                   </td>
                   <td>${r.played}</td>
                   <td>${r.gd > 0 ? '+' + r.gd : r.gd}</td>
@@ -79,50 +103,67 @@ function renderStandings(groups) {
 }
 
 function renderLegend() {
-  const zones = [...ZONES, { key: 'local', label: localLabel, tz: localTz }];
+  const zones = [...ZONES, localZone];
   el('#zonesLegend').innerHTML = zones
-    .map((z) => `<span class="zone-chip"><b>${z.label}</b> ${tzAbbr(z.tz)}</span>`)
+    .map((z) => {
+      const flag = z.local && z.code ? `<img class="zone-flag" src="https://flagcdn.com/h20/${z.code}.png" alt="" />` : '';
+      return `<span class="zone-chip ${z.local ? 'local' : ''}">${flag}<b>${z.label}</b> ${tzAbbr(z.tz)}</span>`;
+    })
     .join('');
 }
 
+// --- Filters (dropdowns) ----------------------------------------------------
 function buildFilters() {
-  const groups = [...new Set(state.matches.map((m) => m.group).filter(Boolean))].sort();
+  const nations = [...new Set(
+    state.matches.flatMap((m) => [m.home.name, m.away.name]).filter((n) => n && !isPlaceholder(n))
+  )].sort();
+  const favOpt = favs.size ? `<option value="__favs__">★ My favourites (${favs.size})</option>` : '';
+  el('#nationFilter').innerHTML =
+    `<option value="all">All nations</option>` + favOpt +
+    nations.map((n) => `<option value="${n}">${n}</option>`).join('');
+  el('#nationFilter').value = state.nation;
+
+  const groups = [...new Set(state.matches.map((m) => m.group).filter(Boolean))];
   el('#groupFilter').innerHTML =
-    chip('all', 'All groups', 'group') + groups.map((g) => chip(g, g, 'group')).join('');
+    `<option value="all">All groups</option>` + groups.map((g) => `<option value="${g}">${g}</option>`).join('');
+  el('#groupFilter').value = state.group;
 
   const days = [...new Set(state.matches.map((m) => dayKey(m.utcDate)))];
   el('#dayFilter').innerHTML =
-    chip('all', 'All days', 'day') +
-    days.map((d) => chip(d, fmtDayShort(d), 'day')).join('');
-  syncChips();
+    `<option value="all">All days</option>` + days.map((d) => `<option value="${d}">${fmtDayShort(d)}</option>`).join('');
+  el('#dayFilter').value = state.day;
 }
 
-function chip(value, label, kind) {
-  return `<button class="chip" data-kind="${kind}" data-value="${value}" aria-pressed="false">${label}</button>`;
+function isPlaceholder(name) {
+  return name === 'TBD' || /winner|runner|loser|\bv\b|\//i.test(name);
 }
 
 function bindControls() {
-  el('#search').addEventListener('input', (e) => {
-    state.search = e.target.value.trim().toLowerCase();
-    render();
-  });
-  document.addEventListener('click', (e) => {
-    const c = e.target.closest('.chip');
-    if (!c) return;
-    state[c.dataset.kind] = c.dataset.value;
-    syncChips();
-    render();
-  });
-}
+  el('#search').addEventListener('input', (e) => { state.search = e.target.value.trim().toLowerCase(); render(); });
+  el('#nationFilter').addEventListener('change', (e) => { state.nation = e.target.value; render(); });
+  el('#groupFilter').addEventListener('change', (e) => { state.group = e.target.value; render(); });
+  el('#dayFilter').addEventListener('change', (e) => { state.day = e.target.value; render(); });
 
-function syncChips() {
-  document.querySelectorAll('.chip').forEach((c) => {
-    c.setAttribute('aria-pressed', String(state[c.dataset.kind] === c.dataset.value));
+  // Star / unstar a nation (delegated).
+  el('#matchList').addEventListener('click', (e) => {
+    const star = e.target.closest('.star');
+    if (!star) return;
+    const team = star.dataset.team;
+    favs.has(team) ? favs.delete(team) : favs.add(team);
+    saveFavs();
+    buildFilters();
+    render();
+    loadStandings();
   });
 }
 
 function filtered() {
   return state.matches.filter((m) => {
+    if (state.nation === '__favs__') {
+      if (!favs.has(m.home.name) && !favs.has(m.away.name)) return false;
+    } else if (state.nation !== 'all') {
+      if (m.home.name !== state.nation && m.away.name !== state.nation) return false;
+    }
     if (state.group !== 'all' && m.group !== state.group) return false;
     if (state.day !== 'all' && dayKey(m.utcDate) !== state.day) return false;
     if (state.search) {
@@ -138,37 +179,47 @@ function render() {
   const host = el('#matchList');
   el('#emptyState').hidden = list.length > 0;
 
-  let html = '';
-  let lastDay = null;
+  // Group matches by UK calendar day so each heading can show both the UK date
+  // and the Thai/Indo date for that block.
+  const days = [];
+  let cur = null;
   for (const m of list) {
     const dk = dayKey(m.utcDate);
-    if (dk !== lastDay) {
-      html += `<h2 class="day-heading">${fmtDayLong(dk)}</h2>`;
-      lastDay = dk;
-    }
-    html += matchCard(m);
+    if (!cur || cur.dk !== dk) { cur = { dk, items: [] }; days.push(cur); }
+    cur.items.push(m);
+  }
+
+  let html = '';
+  for (const g of days) {
+    html += dayHeading(g);
+    for (const m of g.items) html += matchCard(m);
   }
   host.innerHTML = html;
 
-  host.querySelectorAll('.cal-btn').forEach((b) =>
-    b.addEventListener('click', () => downloadIcs(b.dataset.id))
-  );
+  host.querySelectorAll('.cal-btn').forEach((b) => b.addEventListener('click', () => downloadIcs(b.dataset.id)));
+}
+
+function dayHeading(g) {
+  const uk = fmtDayLong(g.dk);
+  // Thai/Indo date(s) for this block — usually one, occasionally two near midnight.
+  const asia = [...new Set(g.items.map((m) => fmtDayLongInTz(m.utcDate, 'Asia/Bangkok')))].join(' / ');
+  return `<h2 class="day-heading">
+    <span class="dh-line"><span class="dh-date">${uk}</span><span class="dh-tag uk">UK</span></span>
+    <span class="dh-line alt"><span class="dh-date">${asia}</span><span class="dh-tag">Thai / Indo</span></span>
+  </h2>`;
 }
 
 function matchCard(m) {
-  const zones = [...ZONES, { key: 'local', label: localLabel, tz: localTz, local: true }];
+  const zones = [...ZONES, localZone];
   const times = zones
-    .map((z) => {
-      const t = fmtTime(m.utcDate, z.tz);
-      const d = fmtDateTiny(m.utcDate, z.tz);
-      return `<div class="time-row ${z.local ? 'local' : ''}">
-        <span class="tz">${z.label}</span>
-        <span class="t">${t}</span><span class="d">${d}</span>
-      </div>`;
-    })
+    .map((z) => `<div class="time-row ${z.local ? 'local' : ''}">
+        <span class="tz">${z.local ? 'Your Time' : z.label}</span>
+        <span class="t">${fmtTime(m.utcDate, z.tz)}</span><span class="d">${fmtDateTiny(m.utcDate, z.tz)}</span>
+      </div>`)
     .join('');
 
-  return `<article class="match">
+  const faved = favs.has(m.home.name) || favs.has(m.away.name);
+  return `<article class="match ${faved ? 'is-fav' : ''}">
     <div class="match-teams">
       ${teamRow(m.home)}
       ${teamRow(m.away)}
@@ -187,30 +238,42 @@ function teamRow(team) {
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
-  return `<div class="team">${flag}<span>${team.name}</span></div>`;
+  const canFav = !isPlaceholder(team.name);
+  const star = canFav
+    ? `<button class="star ${favs.has(team.name) ? 'on' : ''}" data-team="${team.name}" title="Favourite ${team.name}" aria-label="Favourite ${team.name}">${favs.has(team.name) ? '★' : '☆'}</button>`
+    : '';
+  return `<div class="team">${flag}<span class="team-name">${team.name}</span>${star}</div>`;
 }
 
-// Map a channel name to a network for badge styling (BBC = black, ITV = gold).
-function channelNet(name) {
-  if (!name) return 'tbc';
-  if (name.startsWith('BBC') && name.includes('ITV')) return 'both';
-  if (name.startsWith('BBC')) return 'bbc';
-  if (name.startsWith('ITV')) return 'itv';
-  return 'tbc';
-}
+// --- Channel logos ----------------------------------------------------------
+const bbcBlocks = () => `<span class="bbc-blocks"><i>B</i><i>B</i><i>C</i></span>`;
+const itvMark = (num) => `<span class="itv-mark">itv${num ? `<b>${num}</b>` : ''}</span>`;
+
 function channelBadge(channel) {
   if (!channel) return `<span class="channel-badge net-tbc">TBC</span>`;
-  return `<span class="channel-badge net-${channelNet(channel)}">${channel}</span>`;
+  const isBBC = channel.startsWith('BBC');
+  const isITV = channel.includes('ITV');
+  if (isBBC && isITV) {
+    return `<span class="channel-badge logo"><span class="logo-inner">${bbcBlocks()}<span class="chan-amp">&amp;</span>${itvMark('')}</span></span>`;
+  }
+  if (isBBC) {
+    const suffix = channel.replace('BBC', '').trim().toUpperCase(); // ONE / TWO
+    return `<span class="channel-badge logo"><span class="logo-inner">${bbcBlocks()}<span class="chan-suffix">${suffix}</span></span></span>`;
+  }
+  if (isITV) {
+    const num = channel.replace('ITV', '').trim(); // 1 / 4
+    return `<span class="channel-badge logo"><span class="logo-inner">${itvMark(num)}</span></span>`;
+  }
+  return `<span class="channel-badge net-tbc">${channel}</span>`;
 }
 
 function statusBadge(m) {
   const start = new Date(m.utcDate).getTime();
   const now = Date.now();
-  const end = start + 115 * 60_000; // ~match length
+  const end = start + 115 * 60_000;
   if (now >= start && now <= end) return `<span class="status-badge live">● Live</span>`;
   if (now > end) return `<span class="status-badge finished">Finished</span>`;
-  if (dayKey(m.utcDate) === dayKey(new Date().toISOString()))
-    return `<span class="status-badge today">Today</span>`;
+  if (dayKey(m.utcDate) === dayKey(new Date().toISOString())) return `<span class="status-badge today">Today</span>`;
   return `<span class="status-badge">Upcoming</span>`;
 }
 
@@ -222,19 +285,12 @@ function downloadIcs(id) {
   const end = new Date(start.getTime() + 115 * 60_000);
   const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//SportsTV//WC2026//EN',
-    'BEGIN:VEVENT',
-    `UID:sportstv-${m.id}@local`,
-    `DTSTAMP:${stamp(start)}`,
-    `DTSTART:${stamp(start)}`,
-    `DTEND:${stamp(end)}`,
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SportsTV//WC2026//EN', 'BEGIN:VEVENT',
+    `UID:sportstv-${m.id}@local`, `DTSTAMP:${stamp(start)}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
     `SUMMARY:${m.home.name} vs ${m.away.name} (World Cup 2026)`,
     `LOCATION:${(m.venue || '').replace(/,/g, '\\,')}`,
     `DESCRIPTION:UK TV: ${m.channel || 'TBC'}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
+    'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n');
   const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
   const a = document.createElement('a');
@@ -252,11 +308,13 @@ function fmtDateTiny(iso, tz) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: tz }).format(new Date(iso));
 }
 function dayKey(iso) {
-  // Group by calendar day in UK time so headings are stable.
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(iso));
 }
 function fmtDayLong(key) {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(key + 'T12:00:00Z'));
+}
+function fmtDayLongInTz(iso, tz) {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }).format(new Date(iso));
 }
 function fmtDayShort(key) {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(key + 'T12:00:00Z'));

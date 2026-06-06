@@ -39,8 +39,8 @@ export const groupMatches = [
   m(2, '2026-06-12', '03:00', 'Group A', 'South Korea', 'kr', 'Czechia', 'cz', 'Guadalajara', 'ITV1'),
   m(3, '2026-06-18', '17:00', 'Group A', 'Czechia', 'cz', 'South Africa', 'za', 'Atlanta', 'BBC One'),
   m(4, '2026-06-19', '02:00', 'Group A', 'Mexico', 'mx', 'South Korea', 'kr', 'Guadalajara', 'BBC One'),
-  m(5, '2026-06-25', '02:00', 'Group A', 'Czechia', 'cz', 'Mexico', 'mx', 'Estadio Azteca, Mexico City', null),
-  m(6, '2026-06-25', '02:00', 'Group A', 'South Africa', 'za', 'South Korea', 'kr', 'Monterrey', null),
+  m(5, '2026-06-25', '02:00', 'Group A', 'Czechia', 'cz', 'Mexico', 'mx', 'Estadio Azteca, Mexico City', 'BBC One'),
+  m(6, '2026-06-25', '02:00', 'Group A', 'South Africa', 'za', 'South Korea', 'kr', 'Monterrey', 'BBC Two'),
 
   // Group B
   m(7, '2026-06-12', '20:00', 'Group B', 'Canada', 'ca', 'Bosnia and Herzegovina', 'ba', 'BMO Field, Toronto', 'BBC One'),
@@ -83,50 +83,50 @@ export const groupMatches = [
   m(36, '2026-06-26', '00:00', 'Group F', 'Tunisia', 'tn', 'Netherlands', 'nl', 'Kansas City', 'BBC One'),
 
   // Group G
-  m(37, '2026-06-15', '20:00', 'Group G', 'Belgium', 'be', 'Egypt', 'eg', 'Seattle', null),
-  m(38, '2026-06-16', '02:00', 'Group G', 'Iran', 'ir', 'New Zealand', 'nz', 'Los Angeles', null),
+  m(37, '2026-06-15', '20:00', 'Group G', 'Belgium', 'be', 'Egypt', 'eg', 'Seattle', 'BBC One'),
+  m(38, '2026-06-16', '02:00', 'Group G', 'Iran', 'ir', 'New Zealand', 'nz', 'Los Angeles', 'BBC One'),
   m(39, '2026-06-21', '20:00', 'Group G', 'Belgium', 'be', 'Iran', 'ir', 'Los Angeles', 'ITV1'),
-  m(40, '2026-06-22', '02:00', 'Group G', 'New Zealand', 'nz', 'Egypt', 'eg', 'Vancouver', null),
+  m(40, '2026-06-22', '02:00', 'Group G', 'New Zealand', 'nz', 'Egypt', 'eg', 'Vancouver', 'ITV1'),
   m(41, '2026-06-27', '04:00', 'Group G', 'Egypt', 'eg', 'Iran', 'ir', 'Seattle', 'BBC Two'),
   m(42, '2026-06-27', '04:00', 'Group G', 'New Zealand', 'nz', 'Belgium', 'be', 'Vancouver', 'BBC One'),
 
   // Group H
-  m(43, '2026-06-15', '17:00', 'Group H', 'Spain', 'es', 'Cape Verde', 'cv', 'Atlanta', null),
-  m(44, '2026-06-15', '23:00', 'Group H', 'Saudi Arabia', 'sa', 'Uruguay', 'uy', 'Miami', null),
+  m(43, '2026-06-15', '17:00', 'Group H', 'Spain', 'es', 'Cape Verde', 'cv', 'Atlanta', 'ITV1'),
+  m(44, '2026-06-15', '23:00', 'Group H', 'Saudi Arabia', 'sa', 'Uruguay', 'uy', 'Miami', 'ITV1'),
   m(45, '2026-06-21', '17:00', 'Group H', 'Spain', 'es', 'Saudi Arabia', 'sa', 'Atlanta', 'BBC One'),
-  m(46, '2026-06-21', '23:00', 'Group H', 'Uruguay', 'uy', 'Cape Verde', 'cv', 'Miami', null),
+  m(46, '2026-06-21', '23:00', 'Group H', 'Uruguay', 'uy', 'Cape Verde', 'cv', 'Miami', 'BBC One'),
   m(47, '2026-06-27', '01:00', 'Group H', 'Cape Verde', 'cv', 'Saudi Arabia', 'sa', 'Houston', 'ITV4'),
   m(48, '2026-06-27', '01:00', 'Group H', 'Uruguay', 'uy', 'Spain', 'es', 'Guadalajara', 'ITV1'),
 
   // Group I
   m(49, '2026-06-16', '20:00', 'Group I', 'France', 'fr', 'Senegal', 'sn', 'New York / New Jersey', 'BBC One'),
-  m(50, '2026-06-16', '23:00', 'Group I', 'Iraq', 'iq', 'Norway', 'no', 'Boston', null),
-  m(51, '2026-06-22', '22:00', 'Group I', 'France', 'fr', 'Iraq', 'iq', 'Philadelphia', null),
-  m(52, '2026-06-23', '01:00', 'Group I', 'Norway', 'no', 'Senegal', 'sn', 'New York / New Jersey', null),
+  m(50, '2026-06-16', '23:00', 'Group I', 'Iraq', 'iq', 'Norway', 'no', 'Boston', 'BBC One'),
+  m(51, '2026-06-22', '22:00', 'Group I', 'France', 'fr', 'Iraq', 'iq', 'Philadelphia', 'BBC One'),
+  m(52, '2026-06-23', '01:00', 'Group I', 'Norway', 'no', 'Senegal', 'sn', 'New York / New Jersey', 'ITV1'),
   m(53, '2026-06-26', '20:00', 'Group I', 'Norway', 'no', 'France', 'fr', 'Boston', 'ITV1'),
   m(54, '2026-06-26', '20:00', 'Group I', 'Senegal', 'sn', 'Iraq', 'iq', 'Toronto', 'ITV4'),
 
   // Group J
-  m(55, '2026-06-16', '05:00', 'Group J', 'Austria', 'at', 'Jordan', 'jo', 'San Francisco', null),
-  m(56, '2026-06-17', '02:00', 'Group J', 'Argentina', 'ar', 'Algeria', 'dz', 'Kansas City', null),
+  m(55, '2026-06-16', '05:00', 'Group J', 'Austria', 'at', 'Jordan', 'jo', 'San Francisco', 'BBC One'),
+  m(56, '2026-06-17', '02:00', 'Group J', 'Argentina', 'ar', 'Algeria', 'dz', 'Kansas City', 'ITV1'),
   m(57, '2026-06-22', '18:00', 'Group J', 'Argentina', 'ar', 'Austria', 'at', 'Dallas', 'BBC One'),
-  m(58, '2026-06-23', '04:00', 'Group J', 'Jordan', 'jo', 'Algeria', 'dz', 'San Francisco', null),
+  m(58, '2026-06-23', '04:00', 'Group J', 'Jordan', 'jo', 'Algeria', 'dz', 'San Francisco', 'ITV1'),
   m(59, '2026-06-28', '03:00', 'Group J', 'Algeria', 'dz', 'Austria', 'at', 'Kansas City', 'BBC Two'),
   m(60, '2026-06-28', '03:00', 'Group J', 'Jordan', 'jo', 'Argentina', 'ar', 'Dallas', 'BBC One'),
 
   // Group K
-  m(61, '2026-06-17', '18:00', 'Group K', 'Portugal', 'pt', 'DR Congo', 'cd', 'Houston', null),
-  m(62, '2026-06-18', '03:00', 'Group K', 'Uzbekistan', 'uz', 'Colombia', 'co', 'Estadio Azteca, Mexico City', null),
+  m(61, '2026-06-17', '18:00', 'Group K', 'Portugal', 'pt', 'DR Congo', 'cd', 'Houston', 'BBC One'),
+  m(62, '2026-06-18', '03:00', 'Group K', 'Uzbekistan', 'uz', 'Colombia', 'co', 'Estadio Azteca, Mexico City', 'BBC One'),
   m(63, '2026-06-23', '18:00', 'Group K', 'Portugal', 'pt', 'Uzbekistan', 'uz', 'Houston', 'ITV1'),
-  m(64, '2026-06-24', '03:00', 'Group K', 'Colombia', 'co', 'DR Congo', 'cd', 'Guadalajara', null),
+  m(64, '2026-06-24', '03:00', 'Group K', 'Colombia', 'co', 'DR Congo', 'cd', 'Guadalajara', 'ITV1'),
   m(65, '2026-06-28', '00:30', 'Group K', 'Colombia', 'co', 'Portugal', 'pt', 'Miami', 'BBC One'),
   m(66, '2026-06-28', '00:30', 'Group K', 'DR Congo', 'cd', 'Uzbekistan', 'uz', 'Atlanta', 'BBC Two'),
 
   // Group L
   m(67, '2026-06-17', '21:00', 'Group L', 'England', 'gb-eng', 'Croatia', 'hr', 'Dallas', 'ITV1'),
-  m(68, '2026-06-18', '00:00', 'Group L', 'Ghana', 'gh', 'Panama', 'pa', 'Toronto', null),
+  m(68, '2026-06-18', '00:00', 'Group L', 'Ghana', 'gh', 'Panama', 'pa', 'Toronto', 'ITV1'),
   m(69, '2026-06-23', '21:00', 'Group L', 'England', 'gb-eng', 'Ghana', 'gh', 'Boston', 'BBC One'),
-  m(70, '2026-06-24', '00:00', 'Group L', 'Panama', 'pa', 'Croatia', 'hr', 'Toronto', null),
+  m(70, '2026-06-24', '00:00', 'Group L', 'Panama', 'pa', 'Croatia', 'hr', 'Toronto', 'BBC One'),
   m(71, '2026-06-27', '22:00', 'Group L', 'Panama', 'pa', 'England', 'gb-eng', 'New York / New Jersey', 'ITV1'),
   m(72, '2026-06-27', '22:00', 'Group L', 'Croatia', 'hr', 'Ghana', 'gh', 'Philadelphia', 'ITV4'),
 ];
@@ -183,14 +183,47 @@ export const knockoutMatches = [
 
 export const fallbackMatches = [...groupMatches, ...knockoutMatches];
 
-// Per-match channel override keyed by "home|away" — used to attach UK channels
-// to live API data (which never includes UK TV listings).
-export const channelIndex = Object.fromEntries(
-  fallbackMatches.map((mt) => [`${mt.homeTeam.name}|${mt.awayTeam.name}`, mt.channel])
+// The live API spells some teams differently (Türkiye/Turkey, Curaçao/Curacao,
+// Bosnia-Herzegovina, Cape Verde Islands, Congo DR…). Normalise names so the
+// channel/venue lookup matches regardless of spelling, accents or punctuation.
+const ALIASES = {
+  bosniaherzegovina: 'bosniaandherzegovina',
+  turkey: 'turkiye',
+  capeverdeislands: 'capeverde',
+  congodr: 'drcongo',
+  korearepublic: 'southkorea',
+  republicofkorea: 'southkorea',
+  czechrepublic: 'czechia',
+  cotedivoire: 'ivorycoast',
+  iriran: 'iran',
+  usa: 'unitedstates',
+  unitedstatesofamerica: 'unitedstates',
+};
+function norm(name) {
+  const base = (name || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+    .toLowerCase().replace(/[^a-z0-9]/g, '');          // strip spaces/punctuation
+  return ALIASES[base] || base;
+}
+function teamKey(home, away) {
+  return `${norm(home)}|${norm(away)}`;
+}
+
+// Per-match channel + venue indexes keyed by normalised team pair. The free API
+// tier never includes UK TV listings (and often omits venues), so we backfill
+// both from the bundled schedule.
+const channelIndex = Object.fromEntries(
+  fallbackMatches.map((mt) => [teamKey(mt.homeTeam.name, mt.awayTeam.name), mt.channel])
+);
+const venueIndex = Object.fromEntries(
+  groupMatches.map((mt) => [teamKey(mt.homeTeam.name, mt.awayTeam.name), mt.venue])
 );
 
 export function channelForTeams(home, away) {
-  return channelIndex[`${home}|${away}`] || null;
+  return channelIndex[teamKey(home, away)] || channelIndex[teamKey(away, home)] || null;
+}
+export function venueForTeams(home, away) {
+  return venueIndex[teamKey(home, away)] || venueIndex[teamKey(away, home)] || null;
 }
 
 // Flag URL helper shared with the server.

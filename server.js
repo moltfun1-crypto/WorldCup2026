@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { channelForTeams, fallbackMatches, placeholderStandings } from './data/channels.js';
+import { channelForTeams, venueForTeams, fallbackMatches, placeholderStandings } from './data/channels.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -18,13 +18,36 @@ let cache = { at: 0, data: null };
 let standingsCache = { at: 0, data: null };
 
 // Normalise an upstream (or fallback) match into the shape the frontend wants.
+// UK channel for a knockout match, from the announced round allocation:
+// Round of 32, Round of 16 & Semi-finals → BBC; Quarter-finals → ITV;
+// Third-place play-off → BBC; Final → BBC & ITV simulcast.
+function stageChannel(stageRaw) {
+  const s = (stageRaw || '').toUpperCase();
+  if (!s || s.includes('GROUP')) return null;
+  if (s.includes('QUARTER')) return 'ITV1';
+  if (s.includes('THIRD')) return 'BBC One';
+  if (s.includes('FINAL')) return s.includes('SEMI') ? 'BBC One' : 'BBC & ITV';
+  if (s.includes('SEMI')) return 'BBC One';
+  return 'BBC One'; // Round of 32 / Round of 16 / Last 16 etc.
+}
+
+// "GROUP_L" → "Group L", "LAST_16" → "Last 16", "QUARTER_FINALS" → "Quarter Finals".
+function prettyStage(raw) {
+  if (!raw) return null;
+  if (raw.includes(' ')) return raw; // already pretty (bundled data)
+  return raw
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function shape(match, source) {
   const home = match.homeTeam?.name || 'TBD';
   const away = match.awayTeam?.name || 'TBD';
   return {
     id: String(match.id),
     utcDate: match.utcDate,
-    group: match.group || match.stage || null,
+    group: prettyStage(match.group || match.stage || null),
     status: match.status,
     tbc: Boolean(match.tbc),
     home: {
@@ -36,9 +59,11 @@ function shape(match, source) {
       name: away,
       crest: match.awayTeam?.crest || flagUrl(match.awayTeam?.code),
     },
-    venue: match.venue || null,
-    // Prefer the channel baked into bundled data; otherwise look up by teams.
-    channel: match.channel || channelForTeams(home, away),
+    // Free API tier omits venue — backfill from bundled schedule by teams.
+    venue: match.venue || venueForTeams(home, away),
+    // Prefer the channel baked into bundled data; otherwise look up by teams;
+    // for knockout fixtures fall back to the round-based allocation.
+    channel: match.channel || channelForTeams(home, away) || stageChannel(match.stage || match.group),
     source,
   };
 }
