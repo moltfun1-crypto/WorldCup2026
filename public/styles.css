@@ -252,6 +252,7 @@ body {
 
 /* Times */
 .match-times { display: flex; flex-direction: column; gap: 4px; }
+.match-times-compact { display: none; } /* mobile only */
 .time-row { display: flex; align-items: baseline; gap: 8px; font-size: 0.86rem; }
 .time-row .tz { color: var(--text-dim); width: 104px; flex-shrink: 0; white-space: nowrap; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .time-row .t { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -342,12 +343,17 @@ body {
   .match-teams .team + .team::before { content: 'v'; color: var(--text-dim); font-weight: 600; margin-right: 6px; }
   .score { margin-left: 0; font-size: 0.92rem; }
 
-  /* Times become a 2-up grid (1-up on very narrow) instead of 4 stacked rows. */
-  .match-times { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 3px 10px; }
-  .time-row { gap: 6px; }
-  .time-row .tz { width: auto; font-size: 0.64rem; }
-  .time-row .t { font-size: 0.82rem; }
-  .time-row .d { font-size: 0.64rem; }
+  /* Swap the 4-row times for the compact date-grouped single line. */
+  .match-times { display: none; }
+  .match-times-compact {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
+    flex-basis: 100%; font-size: 0.7rem; color: var(--text);
+  }
+  .ct-grp { display: inline-flex; align-items: baseline; gap: 5px; color: var(--text-dim); }
+  .ct-grp + .ct-grp::before { content: '·'; color: var(--border); margin-right: 3px; }
+  .ct-date { font-weight: 700; color: var(--accent); }
+  .ct-you .ct-date { color: var(--accent); }
+  .ct-grp b { color: var(--text); font-variant-numeric: tabular-nums; }
 
   /* Last line: group · stadium  …  channel + countdown. */
   .team-meta { flex: 1 1 auto; min-width: 0; margin-top: 0; font-size: 0.7rem; }

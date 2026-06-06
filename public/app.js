@@ -368,6 +368,7 @@ function matchCard(m) {
       ${teamRow(m.away, showScore ? m.score.away : null, winAway)}
     </div>
     <div class="match-times">${times}</div>
+    <div class="match-times-compact">${compactTimes(m)}</div>
     <div class="team-meta">${[m.group, m.venue].filter(Boolean).join(' · ')}</div>
     <div class="match-side">
       <div class="channels">${channelBadge(m.channel)}</div>
@@ -375,6 +376,28 @@ function matchCard(m) {
       ${countdownEl(m)}
     </div>
   </article>`;
+}
+
+// Mobile times: group the fixed zones that share a date so the date shows once
+// (e.g. "12 Jun · Koh Phangan 02:00 · Bali 03:00 · 11 Jun · UK 20:00"), then
+// "Your Time" on its own.
+function compactTimes(m) {
+  const zones = activeZones();
+  const fixed = zones.filter((z) => !z.local);
+  const byDate = new Map();
+  for (const z of fixed) {
+    const d = fmtDateTiny(m.utcDate, z.tz);
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(`${z.label} <b>${fmtTime(m.utcDate, z.tz)}</b>`);
+  }
+  let html = [...byDate.entries()]
+    .map(([d, zs]) => `<span class="ct-grp"><span class="ct-date">${d}</span> ${zs.join(' · ')}</span>`)
+    .join('');
+  const you = zones.find((z) => z.local);
+  if (you) {
+    html += `<span class="ct-grp ct-you"><span class="ct-date">You</span> <b>${fmtTime(m.utcDate, you.tz)}</b> ${fmtDateTiny(m.utcDate, you.tz)}</span>`;
+  }
+  return html;
 }
 
 function teamRow(team, score, winner) {
