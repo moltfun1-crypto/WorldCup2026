@@ -58,6 +58,7 @@ async function init() {
   loadStandings();
   setInterval(loadMatches, 60_000); // re-fetch so scores + Live/Finished update
   setInterval(loadStandings, 120_000);
+  setInterval(tick, 1_000); // live-ticking countdowns
 }
 
 // Switch between Fixtures and Group Tables (used on mobile; both show on desktop).
@@ -276,37 +277,43 @@ function render() {
   renderFilterBanner();
 }
 
-// Top strip: the live match if any, otherwise the next kickoff. Reflects all
-// fixtures regardless of the current filter.
+// Earliest upcoming fixture, optionally matching a predicate.
+function nextUpcoming(pred) {
+  const now = Date.now();
+  return state.matches
+    .filter((m) => new Date(m.utcDate).getTime() > now && (!pred || pred(m)))
+    .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))[0];
+}
+
+// Compact top strip: a "Live now / Next up" card plus a "Next England game" card.
 function renderNowNext() {
   const host = el('#nowNext');
-  const now = Date.now();
   const live = state.matches.filter((m) => isLive(m.status));
-  let m, label;
-  if (live.length) { m = live[0]; label = 'Live now'; }
-  else {
-    m = state.matches
-      .filter((x) => new Date(x.utcDate).getTime() > now)
-      .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))[0];
-    label = 'Next up';
-  }
-  if (!m) { host.hidden = true; return; }
+  const primary = live[0] || nextUpcoming();
+  const eng = nextUpcoming((m) => m.home.name === 'England' || m.away.name === 'England');
 
-  const liveNow = isLive(m.status);
+  const cards = [];
+  if (primary) cards.push(nnCard(primary, isLive(primary.status) ? 'Live now' : 'Next up', isLive(primary.status)));
+  if (eng && eng.id !== primary?.id) cards.push(nnCard(eng, 'Next England game', false));
+
+  if (!cards.length) { host.hidden = true; host.innerHTML = ''; return; }
+  host.hidden = false;
+  host.innerHTML = cards.join('');
+}
+
+function nnCard(m, label, liveNow) {
   const score = liveNow && m.score?.home != null
     ? `<span class="nn-score">${m.score.home}–${m.score.away}</span>`
     : '<span class="nn-v">v</span>';
   const meta = liveNow
     ? (m.status === 'PAUSED' ? 'Half-time' : 'Live')
-    : `Kicks off in ${fmtDuration(new Date(m.utcDate).getTime() - now)}`;
-
-  host.hidden = false;
-  host.className = 'now-next' + (liveNow ? ' live' : '');
-  host.innerHTML = `
+    : `<span class="nn-countdown" data-kickoff="${m.utcDate}">Kicks off in ${fmtDuration(new Date(m.utcDate).getTime() - Date.now())}</span>`;
+  return `<div class="nn-item ${liveNow ? 'live' : ''}">
     <span class="nn-label">${liveNow ? '● ' : ''}${label}</span>
     <span class="nn-teams">${nnTeam(m.home)}${score}${nnTeam(m.away)}</span>
     <span class="nn-meta">${meta}</span>
-    <span class="nn-chan">${channelBadge(m.channel)}</span>`;
+    <span class="nn-chan">${channelBadge(m.channel)}</span>
+  </div>`;
 }
 
 function nnTeam(t) {
@@ -386,23 +393,34 @@ function teamRow(team, score, winner) {
   return `<div class="team">${star}${flag}${name}${scoreEl}</div>`;
 }
 
-// Countdown for an upcoming fixture ("Kicks off in 3h 20m"). Refreshes each
-// 60s render cycle. Hidden once a match is live/finished.
+// Countdown for an upcoming fixture ("Kicks off in 3h 20m 15s"). The text ticks
+// every second via tick(); the 60s refresh keeps statuses/scores current.
 function countdownEl(m) {
   if (isPlayed(m.status) || m.status === 'FINISHED') return '';
   const diff = new Date(m.utcDate).getTime() - Date.now();
   if (diff <= 0) return '';
-  return `<span class="countdown">Kicks off in ${fmtDuration(diff)}</span>`;
+  return `<span class="countdown" data-kickoff="${m.utcDate}">Kicks off in ${fmtDuration(diff)}</span>`;
+}
+
+// Update every countdown's text once a second without a full re-render.
+function tick() {
+  const now = Date.now();
+  document.querySelectorAll('[data-kickoff]').forEach((node) => {
+    const diff = new Date(node.dataset.kickoff).getTime() - now;
+    node.textContent = diff <= 0 ? 'Kicking off…' : `Kicks off in ${fmtDuration(diff)}`;
+  });
 }
 
 function fmtDuration(ms) {
-  const mins = Math.floor(ms / 60_000);
-  const d = Math.floor(mins / 1440);
-  const h = Math.floor((mins % 1440) / 60);
-  const mm = mins % 60;
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${mm}m`;
-  return `${mm}m`;
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 }
 
 const isLive = (s) => s === 'IN_PLAY' || s === 'PAUSED';
