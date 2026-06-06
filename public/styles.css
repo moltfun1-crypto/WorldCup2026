@@ -15,6 +15,8 @@
 }
 
 * { box-sizing: border-box; }
+/* Ensure the hidden attribute always wins over component display rules. */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -61,9 +63,10 @@ body {
   margin: 22px 0 16px;
 }
 .search {
-  flex: 1 1 240px; min-width: 200px;
-  background: var(--bg-elev); border: 1px solid var(--border); color: var(--text);
-  padding: 11px 15px; border-radius: 12px; font-size: 0.92rem; outline: none;
+  flex: 1 1 240px; min-width: 180px;
+  background: var(--bg-elev) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238ba0c9' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 13px center;
+  border: 1px solid var(--border); color: var(--text);
+  padding: 11px 15px 11px 38px; border-radius: 12px; font-size: 0.92rem; outline: none;
   transition: border-color 0.15s;
 }
 .search:focus { border-color: var(--accent-2); }
@@ -238,7 +241,8 @@ body {
 
 /* Favourited match gets a subtle gold edge. */
 .match.is-fav { border-color: rgba(232, 181, 61, 0.45); box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--accent); }
-.team-meta { color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
+.team-meta { color: var(--text-dim); font-size: 0.78rem; }
+.team-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
 
 /* Times */
 .match-times { display: flex; flex-direction: column; gap: 4px; }
@@ -312,33 +316,44 @@ body {
   .tagline { font-size: 0.78rem; }
   .zone-chip { padding: 4px 8px; font-size: 0.68rem; }
 
-  /* Compact controls: search on top, the three filters share one tidy row. */
+  /* Compact controls: search + toggle share the first row, filters the second. */
   .controls { gap: 6px; }
-  .search { flex: 1 1 100%; padding: 9px 12px; font-size: 0.85rem; }
-  .select-wrap { flex: 1 1 0; min-width: 0; }
-  .select { width: 100%; max-width: none; padding: 8px 22px 8px 9px; font-size: 0.74rem; border-radius: 10px; }
-  .select-wrap::after { right: 8px; font-size: 0.7rem; }
-  .toggle-btn { flex: 1 1 100%; padding: 7px 10px; font-size: 0.76rem; border-radius: 10px; }
+  .search { order: 1; flex: 1 1 auto; min-width: 0; padding: 8px 12px 8px 32px; font-size: 0.82rem; background-position: 11px center; }
+  .toggle-btn { order: 2; flex: 0 0 auto; padding: 8px 11px; font-size: 0.74rem; border-radius: 10px; }
+  .select-wrap { order: 3; flex: 1 1 0; min-width: 0; }
+  .select { width: 100%; max-width: none; padding: 8px 20px 8px 9px; font-size: 0.72rem; border-radius: 10px; }
+  .select-wrap::after { right: 7px; font-size: 0.68rem; }
   .view-tabs { margin-bottom: 12px; }
   .view-tab { padding: 8px; font-size: 0.85rem; }
 
-  .match { grid-template-columns: 1fr; gap: 9px; padding: 12px 13px; }
-  .match-teams { gap: 5px; }
-  .team { font-size: 0.95rem; gap: 8px; }
-  .team img, .team .placeholder { width: 24px; height: 16px; }
-  .team-meta { font-size: 0.72rem; }
+  .match { grid-template-columns: 1fr; gap: 8px; padding: 11px 12px; }
+
+  /* Both teams on one line: "Mexico v South Africa". */
+  .match-teams { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .team { font-size: 0.92rem; gap: 7px; flex: 0 1 auto; }
+  .team img, .team .placeholder { width: 22px; height: 15px; }
+  .match-teams .team + .team::before { content: 'v'; color: var(--text-dim); font-weight: 600; margin-right: 6px; }
+  .score { margin-left: 0; font-size: 0.92rem; }
+  .team-foot { flex-basis: 100%; margin-top: 2px; gap: 8px; }
+  .team-meta { font-size: 0.7rem; }
 
   /* Times become a 2-up grid (1-up on very narrow) instead of 4 stacked rows. */
-  .match-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 10px; }
+  .match-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 3px 10px; }
   .time-row { gap: 6px; }
-  .time-row .tz { width: auto; font-size: 0.66rem; }
-  .time-row .t { font-size: 0.84rem; }
-  .time-row .d { font-size: 0.66rem; }
+  .time-row .tz { width: auto; font-size: 0.64rem; }
+  .time-row .t { font-size: 0.82rem; }
+  .time-row .d { font-size: 0.64rem; }
 
   .match-side { flex-direction: row; align-items: center; flex-wrap: wrap; justify-content: flex-start; width: 100%; gap: 8px; }
-  .score { font-size: 1rem; }
+  .status-badge { font-size: 0.6rem; padding: 3px 7px; }
+  .countdown { font-size: 0.66rem; }
 
-  .now-next { padding: 10px 12px; gap: 8px 12px; }
-  .nn-meta { font-size: 0.78rem; }
-  .nn-chan { margin-left: 0; }
+  /* Now/Next: one compact line per card. */
+  .now-next { gap: 8px; }
+  .nn-item { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; padding: 7px 10px; overflow: hidden; }
+  .nn-label { font-size: 0.55rem; padding: 3px 7px; }
+  .nn-teams { flex-wrap: nowrap; min-width: 0; font-size: 0.8rem; overflow: hidden; }
+  .nn-team b { white-space: nowrap; }
+  .nn-meta { font-size: 0.72rem; margin-left: auto; padding-left: 6px; }
+  .nn-chan { display: none; }
 }
