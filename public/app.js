@@ -179,13 +179,16 @@ function render() {
   const host = el('#matchList');
   el('#emptyState').hidden = list.length > 0;
 
-  // Group matches by UK calendar day so each heading can show both the UK date
-  // and the Thai/Indo date for that block.
+  // Group by UK day AND Thai/Indo day together, so every heading is accurate for
+  // all its matches. A UK day with both early-hours and evening kickoffs splits
+  // into two blocks (Thai/Indo same day vs next day) instead of showing a range.
   const days = [];
   let cur = null;
   for (const m of list) {
-    const dk = dayKey(m.utcDate);
-    if (!cur || cur.dk !== dk) { cur = { dk, items: [] }; days.push(cur); }
+    const ukDay = dayKey(m.utcDate);
+    const asiaDay = asiaDayKey(m.utcDate);
+    const key = `${ukDay}|${asiaDay}`;
+    if (!cur || cur.key !== key) { cur = { key, dk: ukDay, items: [] }; days.push(cur); }
     cur.items.push(m);
   }
 
@@ -195,14 +198,12 @@ function render() {
     for (const m of g.items) html += matchCard(m);
   }
   host.innerHTML = html;
-
-  host.querySelectorAll('.cal-btn').forEach((b) => b.addEventListener('click', () => downloadIcs(b.dataset.id)));
 }
 
 function dayHeading(g) {
   const uk = fmtDayLong(g.dk);
-  // Thai/Indo date(s) for this block — usually one, occasionally two near midnight.
-  const asia = [...new Set(g.items.map((m) => fmtDayLongInTz(m.utcDate, 'Asia/Bangkok')))].join(' / ');
+  // Every match in this block shares the same Thai/Indo day, so any item is accurate.
+  const asia = fmtDayLongInTz(g.items[0].utcDate, 'Asia/Bangkok');
   return `<h2 class="day-heading">
     <span class="dh-line"><span class="dh-date">${uk}</span><span class="dh-tag uk">UK</span></span>
     <span class="dh-line alt"><span class="dh-date">${asia}</span><span class="dh-tag">Thai / Indo</span></span>
@@ -229,7 +230,6 @@ function matchCard(m) {
     <div class="match-side">
       ${statusBadge(m)}
       <div class="channels">${channelBadge(m.channel)}</div>
-      <button class="cal-btn" data-id="${m.id}" title="Add to calendar">📅 Add</button>
     </div>
   </article>`;
 }
@@ -242,7 +242,7 @@ function teamRow(team) {
   const star = canFav
     ? `<button class="star ${favs.has(team.name) ? 'on' : ''}" data-team="${team.name}" title="Favourite ${team.name}" aria-label="Favourite ${team.name}">${favs.has(team.name) ? '★' : '☆'}</button>`
     : '';
-  return `<div class="team">${flag}<span class="team-name">${team.name}</span>${star}</div>`;
+  return `<div class="team">${star}${flag}<span class="team-name">${team.name}</span></div>`;
 }
 
 // --- Channel logos ----------------------------------------------------------
@@ -277,29 +277,6 @@ function statusBadge(m) {
   return `<span class="status-badge">Upcoming</span>`;
 }
 
-// ---- Calendar (.ics) -------------------------------------------------------
-function downloadIcs(id) {
-  const m = state.matches.find((x) => x.id === id);
-  if (!m) return;
-  const start = new Date(m.utcDate);
-  const end = new Date(start.getTime() + 115 * 60_000);
-  const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SportsTV//WC2026//EN', 'BEGIN:VEVENT',
-    `UID:sportstv-${m.id}@local`, `DTSTAMP:${stamp(start)}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
-    `SUMMARY:${m.home.name} vs ${m.away.name} (World Cup 2026)`,
-    `LOCATION:${(m.venue || '').replace(/,/g, '\\,')}`,
-    `DESCRIPTION:UK TV: ${m.channel || 'TBC'}`,
-    'END:VEVENT', 'END:VCALENDAR',
-  ].join('\r\n');
-  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${m.home.name}-vs-${m.away.name}.ics`.replace(/\s+/g, '_');
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // ---- Date / time helpers ---------------------------------------------------
 function fmtTime(iso, tz) {
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date(iso));
@@ -309,6 +286,9 @@ function fmtDateTiny(iso, tz) {
 }
 function dayKey(iso) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(iso));
+}
+function asiaDayKey(iso) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date(iso));
 }
 function fmtDayLong(key) {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(key + 'T12:00:00Z'));

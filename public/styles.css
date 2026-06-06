@@ -106,8 +106,8 @@ body {
 /* Match list */
 .match-list { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-/* Sidebar / group tables */
-.sidebar { position: sticky; top: 18px; }
+/* Sidebar / group tables — scrolls with the page (not pinned). */
+.sidebar { align-self: start; }
 .sidebar-title { font-size: 0.95rem; margin: 0 0 12px; letter-spacing: -0.01em; }
 .standings { display: flex; flex-direction: column; gap: 14px; }
 .group-table {
@@ -163,7 +163,7 @@ body {
 .team .placeholder { width: 26px; height: 18px; border-radius: 3px; background: var(--bg-elev); display: inline-block; }
 .team-name { min-width: 0; }
 .star {
-  margin-left: auto; background: none; border: none; cursor: pointer; padding: 0 2px;
+  flex: 0 0 auto; background: none; border: none; cursor: pointer; padding: 0;
   font-size: 1rem; line-height: 1; color: var(--text-dim); transition: color 0.15s, transform 0.1s;
 }
 .star:hover { color: var(--accent); transform: scale(1.15); }
@@ -176,7 +176,7 @@ body {
 /* Times */
 .match-times { display: flex; flex-direction: column; gap: 4px; }
 .time-row { display: flex; align-items: baseline; gap: 8px; font-size: 0.86rem; }
-.time-row .tz { color: var(--text-dim); width: 64px; flex-shrink: 0; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.time-row .tz { color: var(--text-dim); width: 104px; flex-shrink: 0; white-space: nowrap; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .time-row .t { font-variant-numeric: tabular-nums; font-weight: 600; }
 .time-row .d { color: var(--text-dim); font-size: 0.76rem; }
 .time-row.local .t { color: var(--accent); }
@@ -215,13 +215,6 @@ body {
 .status-badge.today { background: rgba(91,140,255,0.15); color: var(--accent-2); border-color: rgba(91,140,255,0.4); }
 .status-badge.finished { opacity: 0.65; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-
-.cal-btn {
-  background: transparent; border: 1px solid var(--border); color: var(--text-dim);
-  font-size: 0.75rem; padding: 6px 11px; border-radius: 8px; cursor: pointer;
-  transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
-}
-.cal-btn:hover { color: var(--text); border-color: #36415a; }
 
 .empty { text-align: center; color: var(--text-dim); padding: 40px 0; }
 
