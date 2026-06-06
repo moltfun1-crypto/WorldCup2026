@@ -366,13 +366,11 @@ function matchCard(m) {
     <div class="match-teams">
       ${teamRow(m.home, showScore ? m.score.home : null, winHome)}
       ${teamRow(m.away, showScore ? m.score.away : null, winAway)}
-      <div class="team-foot">
-        <div class="channels">${channelBadge(m.channel)}</div>
-        <div class="team-meta">${[m.group, m.venue].filter(Boolean).join(' · ')}</div>
-      </div>
+      <div class="team-meta">${[m.group, m.venue].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="match-times">${times}</div>
     <div class="match-side">
+      <div class="channels">${channelBadge(m.channel)}</div>
       ${statusBadge(m)}
       ${countdownEl(m)}
     </div>
@@ -451,19 +449,19 @@ function channelBadge(channel) {
 }
 
 function statusBadge(m) {
-  // Prefer the live API status when present (updates on each 60s refresh).
+  // Only show a badge for live/finished states — upcoming is conveyed by the
+  // "KO in…" countdown, so no "Upcoming" badge is needed.
   if (m.status === 'IN_PLAY') return `<span class="status-badge live">● Live</span>`;
   if (m.status === 'PAUSED') return `<span class="status-badge live">● Half-time</span>`;
   if (m.status === 'FINISHED' || m.status === 'AWARDED') return `<span class="status-badge finished">Full-time</span>`;
   if (m.status === 'POSTPONED' || m.status === 'SUSPENDED' || m.status === 'CANCELLED')
     return `<span class="status-badge">${m.status[0] + m.status.slice(1).toLowerCase()}</span>`;
-  // Otherwise fall back to time-based labelling for upcoming fixtures.
+  // Fallback for bundled data (no live status): infer live/finished from time.
   const start = new Date(m.utcDate).getTime();
   const now = Date.now();
   if (now >= start && now <= start + 130 * 60_000) return `<span class="status-badge live">● Live</span>`;
   if (now > start) return `<span class="status-badge finished">Full-time</span>`;
-  if (dayKey(m.utcDate) === dayKey(new Date().toISOString())) return `<span class="status-badge today">Today</span>`;
-  return `<span class="status-badge">Upcoming</span>`;
+  return '';
 }
 
 // ---- Date / time helpers ---------------------------------------------------

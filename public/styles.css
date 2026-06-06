@@ -241,8 +241,7 @@ body {
 
 /* Favourited match gets a subtle gold edge. */
 .match.is-fav { border-color: rgba(232, 181, 61, 0.45); box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--accent); }
-.team-meta { color: var(--text-dim); font-size: 0.78rem; }
-.team-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.team-meta { color: var(--text-dim); font-size: 0.78rem; margin-top: 4px; }
 
 /* Times */
 .match-times { display: flex; flex-direction: column; gap: 4px; }
@@ -334,8 +333,7 @@ body {
   .team img, .team .placeholder { width: 22px; height: 15px; }
   .match-teams .team + .team::before { content: 'v'; color: var(--text-dim); font-weight: 600; margin-right: 6px; }
   .score { margin-left: 0; font-size: 0.92rem; }
-  .team-foot { flex-basis: 100%; margin-top: 2px; gap: 8px; }
-  .team-meta { font-size: 0.7rem; }
+  .match-teams .team-meta { flex-basis: 100%; margin-top: 2px; font-size: 0.7rem; }
 
   /* Times become a 2-up grid (1-up on very narrow) instead of 4 stacked rows. */
   .match-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 3px 10px; }
