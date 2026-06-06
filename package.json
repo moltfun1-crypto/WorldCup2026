@@ -1,0 +1,14 @@
+{
+  "name": "sportstv",
+  "version": "1.0.0",
+  "description": "World Cup 2026 match times across UK / Bangkok / Bali + UK TV channels",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  }
+}

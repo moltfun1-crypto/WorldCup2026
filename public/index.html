@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SportsTV — World Cup 2026 Match Times & UK Channels</title>
+  <meta name="description" content="FIFA World Cup 2026 fixtures with kickoff times in UK, Bangkok and Bali, plus which UK TV channel each match is on." />
+  <link rel="preconnect" href="https://flagcdn.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="brand-mark">⚽</span>
+        <div>
+          <h1>SportsTV</h1>
+          <p class="tagline">World Cup 2026 · kickoff times &amp; UK channels</p>
+        </div>
+      </div>
+      <div class="zones-legend" id="zonesLegend"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="controls" aria-label="Filters">
+      <input id="search" class="search" type="search" placeholder="Search team or venue…" autocomplete="off" />
+      <div class="filter-group" id="groupFilter"></div>
+      <div class="filter-group" id="dayFilter"></div>
+    </section>
+
+    <p class="source-note" id="sourceNote" hidden></p>
+
+    <div class="layout">
+      <section id="matchList" class="match-list" aria-live="polite"></section>
+
+      <aside class="sidebar" aria-label="Group tables">
+        <h2 class="sidebar-title">Group tables</h2>
+        <div id="standings" class="standings"></div>
+      </aside>
+    </div>
+
+    <p class="empty" id="emptyState" hidden>No matches match your filters.</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Times auto-adjust for daylight saving. UK channel listings are indicative.</span>
+    </div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

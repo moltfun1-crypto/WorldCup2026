@@ -1,0 +1,16 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Logs / OS
+*.log
+npm-debug.log*
+.DS_Store
+
+# Build / runtime
+dist/
+.cache/
