@@ -50,7 +50,7 @@ const FINISHED_OPEN_KEY = 'stv:finishedOpen';
 // Whether the collapsed knockout-bracket panel is expanded (persisted).
 const BRACKET_OPEN_KEY = 'stv:bracketOpen';
 
-const state = { matches: [], nation: 'all', group: 'all', day: 'all', search: '' };
+const state = { matches: [], standings: [], nation: 'all', group: 'all', day: 'all', search: '' };
 const el = (sel) => document.querySelector(sel);
 
 init();
@@ -102,7 +102,9 @@ async function loadStandings() {
   try {
     const res = await fetch('/api/standings');
     const json = await res.json();
-    renderStandings(json.groups || []);
+    state.standings = json.groups || [];
+    renderStandings(state.standings);
+    renderBracket(); // group results may now resolve bracket slots to real teams
   } catch { /* keep previous */ }
 }
 
@@ -324,6 +326,52 @@ const KO_COLUMNS = [
   ['sf', 'Semi-finals'], ['final', 'Final'],
 ];
 
+// Official WC2026 Round-of-32 bracket, keyed by UTC kickoff (each entry matches
+// exactly one feed card). Each slot token is the group position that feeds it:
+// '1A' = winner of Group A, '2B' = runner-up of Group B, '3' = a third-placed
+// team (which group isn't fixed until the group stage ends, so it stays a label
+// until the feed fills it). Source: FIFA schedule / Wikipedia knockout bracket.
+const R32_SLOTS = {
+  '2026-06-28T19:00:00Z': ['2A', '2B'],   // M73
+  '2026-06-29T17:00:00Z': ['1C', '2F'],   // M76
+  '2026-06-29T20:30:00Z': ['1E', '3'],    // M74  (1E v 3rd)
+  '2026-06-30T01:00:00Z': ['1F', '2C'],   // M75
+  '2026-06-30T17:00:00Z': ['2E', '2I'],   // M78
+  '2026-06-30T21:00:00Z': ['1I', '3'],    // M77
+  '2026-07-01T01:00:00Z': ['1A', '3'],    // M79
+  '2026-07-01T16:00:00Z': ['1L', '3'],    // M80
+  '2026-07-01T20:00:00Z': ['1G', '3'],    // M82
+  '2026-07-02T00:00:00Z': ['1D', '3'],    // M81
+  '2026-07-02T19:00:00Z': ['1H', '2J'],   // M84
+  '2026-07-02T23:00:00Z': ['2K', '2L'],   // M83
+  '2026-07-03T03:00:00Z': ['1B', '3'],    // M85
+  '2026-07-03T18:00:00Z': ['2D', '2G'],   // M88
+  '2026-07-03T22:00:00Z': ['1J', '2H'],   // M86
+  '2026-07-04T01:30:00Z': ['1K', '3'],    // M87
+};
+
+// Resolve a bracket slot to a real team once its group has finished, otherwise
+// to a readable placeholder ("Winner A" / "Runner-up B" / "3rd-place team").
+function resolveSlot(token) {
+  if (token[0] === '3') return { name: '3rd-place team', crest: null, tbd: true };
+  const pos = Number(token[0]);            // 1 = winner, 2 = runner-up
+  const grp = token.slice(1);              // 'A'…'L'
+  const g = (state.standings || []).find((x) => x.group === `Group ${grp}` || x.group === grp);
+  if (g && g.table.length >= 4 && g.table.every((r) => r.played >= 3)) {
+    const row = g.table.find((r) => r.pos === pos) || g.table[pos - 1];
+    if (row && !isPlaceholder(row.name)) return { name: row.name, crest: row.crest || null, tbd: false };
+  }
+  return { name: `${pos === 1 ? 'Winner' : 'Runner-up'} ${grp}`, crest: null, tbd: true };
+}
+
+// Prefer the team the feed has confirmed; fall back to the slot resolver so the
+// bracket shows meaningful labels (and early teams) before the feed catches up.
+function displayTeam(feedTeam, token) {
+  if (feedTeam && !isPlaceholder(feedTeam.name)) return { name: feedTeam.name, crest: feedTeam.crest, tbd: false };
+  if (token) return resolveSlot(token);
+  return { name: feedTeam?.name || 'TBD', crest: null, tbd: true };
+}
+
 // Rebuild the bracket from the full match list (independent of the fixture
 // filters). Runs on every refresh, so teams + scores fill in automatically.
 function renderBracket() {
@@ -366,22 +414,24 @@ function bkMatch(m) {
   const live = isLive(m.status);
   const winH = played && m.score.home > m.score.away;
   const winA = played && m.score.away > m.score.home;
+  const slot = R32_SLOTS[m.utcDate]; // [homeToken, awayToken] for R32, else undefined
+  const home = displayTeam(m.home, slot?.[0]);
+  const away = displayTeam(m.away, slot?.[1]);
   const foot = live ? `<span class="bk-live">● Live</span>`
     : played ? `<span class="bk-ft">Full-time</span>`
     : `<span class="bk-when">${fmtDateTiny(m.utcDate, 'Asia/Bangkok')} · ${fmtTime(m.utcDate, localZone.tz)} ${tzAbbr(localZone.tz)}</span>`;
   return `<div class="bk-match ${live ? 'is-live' : ''}">
-    ${bkTeam(m.home, played ? m.score.home : null, winH)}
-    ${bkTeam(m.away, played ? m.score.away : null, winA)}
+    ${bkTeam(home, played ? m.score.home : null, winH)}
+    ${bkTeam(away, played ? m.score.away : null, winA)}
     <div class="bk-foot">${foot}</div>
   </div>`;
 }
 
 function bkTeam(team, score, winner) {
-  const tbd = isPlaceholder(team.name);
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
-  return `<div class="bk-team ${winner ? 'win' : ''} ${tbd ? 'tbd' : ''}">
+  return `<div class="bk-team ${winner ? 'win' : ''} ${team.tbd ? 'tbd' : ''}">
     ${flag}<span class="bk-name">${team.name}</span>
     ${score != null ? `<span class="bk-score">${score}</span>` : ''}
   </div>`;
