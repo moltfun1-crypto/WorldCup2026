@@ -47,6 +47,8 @@ function saveFavs() { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); 
 
 // Whether the collapsed "Finished" section is expanded (persisted).
 const FINISHED_OPEN_KEY = 'stv:finishedOpen';
+// Whether the collapsed knockout-bracket panel is expanded (persisted).
+const BRACKET_OPEN_KEY = 'stv:bracketOpen';
 
 const state = { matches: [], nation: 'all', group: 'all', day: 'all', search: '' };
 const el = (sel) => document.querySelector(sel);
@@ -216,6 +218,23 @@ function bindControls() {
   document.querySelectorAll('.view-tab').forEach((t) =>
     t.addEventListener('click', () => setView(t.dataset.view))
   );
+
+  // Knockout-bracket panel: restore + persist open state, keep the hint in sync.
+  const bracket = el('#bracketSection');
+  if (bracket) {
+    if (localStorage.getItem(BRACKET_OPEN_KEY) === '1') bracket.open = true;
+    syncBracketHint();
+    bracket.addEventListener('toggle', () => {
+      localStorage.setItem(BRACKET_OPEN_KEY, bracket.open ? '1' : '0');
+      syncBracketHint();
+    });
+  }
+}
+
+function syncBracketHint() {
+  const b = el('#bracketSection');
+  const hint = b?.querySelector('.bs-hint');
+  if (hint) hint.textContent = b.open ? 'tap to hide' : 'tap to show';
 }
 
 function applyNationFilter(nation) {
@@ -280,8 +299,92 @@ function render() {
     });
   }
 
+  renderBracket();
   renderNowNext();
   renderFilterBanner();
+}
+
+// --- Knockout bracket -------------------------------------------------------
+// Map a match's round label (the prettified `group` field) to a bracket stage.
+// Order matters: "Semi Finals"/"Quarter Finals"/"Third Place" all contain
+// "final"-ish words, so the more specific rounds are tested first.
+function koStage(group) {
+  const s = (group || '').toLowerCase();
+  if (/third|3rd/.test(s)) return 'third';
+  if (/quarter|1\/4/.test(s)) return 'qf';
+  if (/semi|1\/2/.test(s)) return 'sf';
+  if (/last 32|round of 32|1\/16/.test(s)) return 'r32';
+  if (/last 16|round of 16|1\/8/.test(s)) return 'r16';
+  if (/\bfinal\b/.test(s)) return 'final';
+  return null; // group stage / unknown
+}
+
+const KO_COLUMNS = [
+  ['r32', 'Round of 32'], ['r16', 'Round of 16'], ['qf', 'Quarter-finals'],
+  ['sf', 'Semi-finals'], ['final', 'Final'],
+];
+
+// Rebuild the bracket from the full match list (independent of the fixture
+// filters). Runs on every refresh, so teams + scores fill in automatically.
+function renderBracket() {
+  const host = el('#bracket');
+  if (!host) return;
+  const buckets = { r32: [], r16: [], qf: [], sf: [], final: [], third: [] };
+  for (const m of state.matches) {
+    const st = koStage(m.group);
+    if (st) buckets[st].push(m);
+  }
+  for (const k of Object.keys(buckets)) {
+    buckets[k].sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate) || (a.id > b.id ? 1 : -1));
+  }
+
+  if (!KO_COLUMNS.some(([k]) => buckets[k].length) && !buckets.third.length) {
+    host.innerHTML = `<p class="bracket-empty">Knockout fixtures appear here once the group stage is decided.</p>`;
+    return;
+  }
+
+  let html = '<div class="bracket">';
+  for (const [k, label] of KO_COLUMNS) {
+    if (!buckets[k].length) continue;
+    html += `<div class="bk-round bk-${k}">
+      <div class="bk-round-head">${label}</div>
+      <div class="bk-matches">${buckets[k].map(bkMatch).join('')}</div>
+    </div>`;
+  }
+  html += '</div>';
+  if (buckets.third.length) {
+    html += `<div class="bk-third">
+      <div class="bk-round-head">Third-place play-off</div>
+      ${buckets.third.map(bkMatch).join('')}
+    </div>`;
+  }
+  host.innerHTML = html;
+}
+
+function bkMatch(m) {
+  const played = isPlayed(m.status) && m.score?.home != null;
+  const live = isLive(m.status);
+  const winH = played && m.score.home > m.score.away;
+  const winA = played && m.score.away > m.score.home;
+  const foot = live ? `<span class="bk-live">● Live</span>`
+    : played ? `<span class="bk-ft">Full-time</span>`
+    : `<span class="bk-when">${fmtDateTiny(m.utcDate, 'Asia/Bangkok')} · ${fmtTime(m.utcDate, localZone.tz)} ${tzAbbr(localZone.tz)}</span>`;
+  return `<div class="bk-match ${live ? 'is-live' : ''}">
+    ${bkTeam(m.home, played ? m.score.home : null, winH)}
+    ${bkTeam(m.away, played ? m.score.away : null, winA)}
+    <div class="bk-foot">${foot}</div>
+  </div>`;
+}
+
+function bkTeam(team, score, winner) {
+  const tbd = isPlaceholder(team.name);
+  const flag = team.crest
+    ? `<img src="${team.crest}" alt="" loading="lazy" />`
+    : `<span class="placeholder"></span>`;
+  return `<div class="bk-team ${winner ? 'win' : ''} ${tbd ? 'tbd' : ''}">
+    ${flag}<span class="bk-name">${team.name}</span>
+    ${score != null ? `<span class="bk-score">${score}</span>` : ''}
+  </div>`;
 }
 
 // Group a list of matches by Thai/Indo (Bangkok) day — the primary date. The UK

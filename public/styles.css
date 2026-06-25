@@ -163,6 +163,58 @@ body {
 }
 .view-tab[aria-selected="true"] { background: var(--accent); color: #08110d; }
 
+/* Knockout bracket — collapsible panel, closed by default */
+.bracket-section { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-elev); margin: 0 0 16px; overflow: hidden; }
+.bracket-summary {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
+  padding: 12px 15px; font-weight: 600; color: var(--text); user-select: none;
+}
+.bracket-summary::-webkit-details-marker { display: none; }
+.bracket-summary::after {
+  content: "▾"; margin-left: auto; color: var(--text-dim); font-size: 0.8rem; transition: transform 0.2s;
+}
+.bracket-section[open] > .bracket-summary::after { transform: rotate(180deg); }
+.bracket-summary:hover { color: var(--accent-soft); }
+.bs-title { letter-spacing: -0.01em; }
+.bs-hint { font-size: 0.74rem; font-weight: 500; color: var(--text-dim); }
+
+/* Scrollable viewport so a tall/wide bracket never blows up the page. */
+.bracket-scroll { max-height: 78vh; overflow: auto; padding: 4px 12px 14px; -webkit-overflow-scrolling: touch; }
+.bracket-empty { color: var(--text-dim); font-size: 0.88rem; margin: 8px 4px; }
+
+/* The funnel: one column per round; later rounds spread to centre on feeders. */
+.bracket { display: flex; gap: 26px; min-width: max-content; align-items: stretch; }
+.bk-round { display: flex; flex-direction: column; min-width: 158px; }
+.bk-matches { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+.bk-round-head {
+  position: sticky; top: 0; z-index: 1; flex: none; text-align: center; font-size: 0.66rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent);
+  background: var(--bg-elev); padding: 4px 0 6px; margin-bottom: 2px;
+}
+.bk-match {
+  position: relative; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 9px; padding: 7px 9px; display: flex; flex-direction: column; gap: 3px;
+}
+.bk-match.is-live { border-color: rgba(255, 90, 106, 0.55); box-shadow: inset 3px 0 0 var(--live); }
+/* Connector stubs between consecutive rounds (read as bracket lines). */
+.bk-round:not(:last-child) .bk-match::after,
+.bk-round:not(:first-child) .bk-match::before {
+  content: ""; position: absolute; top: 50%; width: 13px; height: 2px; background: var(--border);
+}
+.bk-round:not(:last-child) .bk-match::after { right: -13px; }
+.bk-round:not(:first-child) .bk-match::before { left: -13px; }
+.bk-team { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; min-width: 0; }
+.bk-team img, .bk-team .placeholder { width: 19px; height: 13px; object-fit: cover; border-radius: 2px; background: var(--bg-elev); flex: none; }
+.bk-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-team.tbd .bk-name { color: var(--text-dim); font-style: italic; }
+.bk-team.win .bk-name { color: var(--accent); font-weight: 700; }
+.bk-score { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text); }
+.bk-team.win .bk-score { color: var(--accent); }
+.bk-foot { font-size: 0.66rem; color: var(--text-dim); white-space: nowrap; }
+.bk-foot .bk-live { color: var(--live); font-weight: 700; }
+.bk-foot .bk-ft { color: var(--accent-soft); font-weight: 600; }
+.bk-third { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); max-width: 220px; }
+
 /* Layout: matches + standings sidebar */
 .layout { display: grid; grid-template-columns: 1fr 320px; gap: 26px; align-items: start; }
 
