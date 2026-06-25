@@ -45,6 +45,9 @@ const FAV_KEY = 'stv:favourites';
 const favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
 function saveFavs() { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }
 
+// Whether the collapsed "Finished" section is expanded (persisted).
+const FINISHED_OPEN_KEY = 'stv:finishedOpen';
+
 const state = { matches: [], nation: 'all', group: 'all', day: 'all', search: '' };
 const el = (sel) => document.querySelector(sel);
 
@@ -256,8 +259,34 @@ function render() {
   const host = el('#matchList');
   el('#emptyState').hidden = list.length > 0;
 
-  // Group by Thai/Indo (Bangkok) day — the primary date. The UK line underneath
-  // may show two dates when a single Thai/Indo day spans two UK days.
+  // Split played-out matches into a collapsed "Finished" section so the page
+  // leads with what's live or still to come. Live matches stay in the main list.
+  const finished = [];
+  const active = [];
+  for (const m of list) (isFinishedMatch(m) ? finished : active).push(m);
+
+  let html = '';
+  if (finished.length) html += renderFinishedSection(finished);
+  html += renderDayGroups(active);
+  host.innerHTML = html;
+
+  // Persist the open/closed choice (the element is recreated on every render).
+  const fin = el('#finishedSection');
+  if (fin) {
+    fin.addEventListener('toggle', () => {
+      localStorage.setItem(FINISHED_OPEN_KEY, fin.open ? '1' : '0');
+      const hint = fin.querySelector('.fs-hint');
+      if (hint) hint.textContent = fin.open ? 'tap to hide' : 'tap to show';
+    });
+  }
+
+  renderNowNext();
+  renderFilterBanner();
+}
+
+// Group a list of matches by Thai/Indo (Bangkok) day — the primary date. The UK
+// line underneath may show two dates when a single Thai/Indo day spans two UK days.
+function renderDayGroups(list) {
   const days = [];
   let cur = null;
   for (const m of list) {
@@ -265,16 +294,35 @@ function render() {
     if (!cur || cur.key !== asiaDay) { cur = { key: asiaDay, items: [] }; days.push(cur); }
     cur.items.push(m);
   }
-
   let html = '';
   for (const g of days) {
     html += dayHeading(g);
     for (const m of g.items) html += matchCard(m);
   }
-  host.innerHTML = html;
+  return html;
+}
 
-  renderNowNext();
-  renderFilterBanner();
+// Played matches collapse into a single "Finished" accordion, closed by default.
+function renderFinishedSection(list) {
+  const open = localStorage.getItem(FINISHED_OPEN_KEY) === '1';
+  return `<details class="finished-section" id="finishedSection"${open ? ' open' : ''}>
+    <summary class="finished-summary">
+      <span class="fs-title">✓ Finished</span>
+      <span class="fs-count">${list.length}</span>
+      <span class="fs-hint">${open ? 'tap to hide' : 'tap to show'}</span>
+    </summary>
+    <div class="finished-body">${renderDayGroups(list)}</div>
+  </details>`;
+}
+
+// A match is "finished" (and gets tucked into the collapsed section) when the
+// feed says so, or — for the bundled schedule with no live status — when its
+// kickoff is comfortably in the past. Live/postponed/cancelled stay in the list.
+function isFinishedMatch(m) {
+  if (m.status === 'FINISHED' || m.status === 'AWARDED') return true;
+  if (isLive(m.status) || m.status === 'POSTPONED' || m.status === 'SUSPENDED' || m.status === 'CANCELLED') return false;
+  const start = new Date(m.utcDate).getTime();
+  return Number.isFinite(start) && Date.now() > start + 130 * 60_000; // ~match length
 }
 
 // Earliest upcoming fixture, optionally matching a predicate.

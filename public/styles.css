@@ -212,6 +212,31 @@ body {
 }
 .dh-tag.primary { color: var(--accent); border-color: rgba(232, 181, 61, 0.45); }
 
+/* Collapsed "Finished" section — played matches tucked away, opens on click. */
+.finished-section { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-elev); overflow: hidden; }
+.finished-summary {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
+  padding: 12px 15px; font-weight: 600; color: var(--text); user-select: none;
+}
+.finished-summary::-webkit-details-marker { display: none; }
+.finished-summary::after {
+  content: "▾"; margin-left: auto; color: var(--text-dim); font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+.finished-section[open] > .finished-summary::after { transform: rotate(180deg); }
+.finished-summary:hover { color: var(--accent-soft); }
+.fs-title { letter-spacing: -0.01em; }
+.fs-count {
+  font-size: 0.72rem; font-weight: 700; color: var(--text-dim); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; font-variant-numeric: tabular-nums;
+}
+.fs-hint { font-size: 0.74rem; font-weight: 500; color: var(--text-dim); }
+.finished-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 12px 14px; }
+.finished-body .day-heading:first-child { margin-top: 6px; }
+/* Played cards read as past — slightly dimmed until hovered. */
+.finished-body .match { opacity: 0.82; transition: opacity 0.15s, border-color 0.15s, transform 0.15s; }
+.finished-body .match:hover { opacity: 1; }
+
 .match {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 16px 18px; display: grid; gap: 8px 18px; box-shadow: var(--shadow);
