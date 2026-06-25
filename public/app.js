@@ -113,7 +113,7 @@ async function loadStandings() {
 // while every rival wins all of theirs (rivals also meet each other, so this
 // can never flag a team that isn't truly through). Once the group is complete
 // the feed's final order has already settled tiebreaks, so the top two are in
-// outright. (Best-third-place qualifiers span groups and aren't computed here.)
+// outright. (Best-third-place qualifiers span groups — see knockoutQualifiers.)
 function qualifiedNames(g) {
   const rows = g.table || [];
   if (rows.length < 2) return new Set();
@@ -132,10 +132,41 @@ function qualifiedNames(g) {
   return out;
 }
 
+// Combine every group's confirmed qualifiers into one name set: each group's
+// secured top-two (see qualifiedNames) plus — once the whole group stage is
+// done — the eight best third-placed teams.
+function knockoutQualifiers(groups) {
+  const out = new Set();
+  for (const g of groups) qualifiedNames(g).forEach((n) => out.add(n));
+
+  // Best third-placed teams (2026 format: 12 groups, the top 8 thirds advance).
+  // Only computed once EVERY group is complete — the final group matchday —
+  // because all twelve third-placed teams must be known before they can be ranked.
+  // Order: points, then goal difference, then goals scored. Conservative at the
+  // 8/9 cut-off: a team level on all three with a rival just outside the eight
+  // isn't marked until the order is unambiguous (FIFA settles that on fair-play
+  // points / drawing of lots, which the feed doesn't expose).
+  const allComplete = groups.length === 12 &&
+    groups.every((g) => (g.table || []).length >= 4 && g.table.every((r) => r.played >= g.table.length - 1));
+  if (allComplete) {
+    const thirds = groups
+      .map((g) => g.table.find((r) => r.pos === 3))
+      .filter((r) => r && !isPlaceholder(r.name));
+    const cmp = (a, b) => (a.points - b.points) || ((a.gd || 0) - (b.gd || 0)) || ((a.gf || 0) - (b.gf || 0));
+    for (const t of thirds) {
+      // How many thirds could rank above t (strictly better, or level and thus
+      // separable only by criteria we can't see)? Fewer than 8 ⇒ t is in for sure.
+      const couldRankAbove = thirds.filter((s) => s !== t && cmp(s, t) >= 0).length;
+      if (couldRankAbove < 8) out.add(t.name);
+    }
+  }
+  return out;
+}
+
 function renderStandings(groups) {
+  const through = knockoutQualifiers(groups); // one set across all groups, recomputed each refresh → live
   el('#standings').innerHTML = groups
     .map((g) => {
-      const through = qualifiedNames(g); // recomputed each refresh → live
       return `<div class="group-table">
         <h3>${g.group}</h3>
         <table>
