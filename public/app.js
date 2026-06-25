@@ -104,7 +104,7 @@ async function loadStandings() {
     const json = await res.json();
     state.standings = json.groups || [];
     renderStandings(state.standings);
-    renderBracket(); // group results may now resolve bracket slots to real teams
+    render(); // group results may now resolve fixtures + bracket slots to real teams
   } catch { /* keep previous */ }
 }
 
@@ -260,15 +260,18 @@ function clearFilters() {
 
 function filtered() {
   return state.matches.filter((m) => {
+    // Filter on the resolved teams so a decided knockout fixture matches its real
+    // nations / search terms, not the feed's lingering "TBD".
+    const { home, away } = matchTeams(m);
     if (state.nation === '__favs__') {
-      if (!favs.has(m.home.name) && !favs.has(m.away.name)) return false;
+      if (!favs.has(home.name) && !favs.has(away.name)) return false;
     } else if (state.nation !== 'all') {
-      if (m.home.name !== state.nation && m.away.name !== state.nation) return false;
+      if (home.name !== state.nation && away.name !== state.nation) return false;
     }
     if (state.group !== 'all' && m.group !== state.group) return false;
     if (state.day !== 'all' && dayKey(m.utcDate) !== state.day) return false;
     if (state.search) {
-      const hay = `${m.home.name} ${m.away.name} ${m.venue || ''}`.toLowerCase();
+      const hay = `${home.name} ${away.name} ${m.venue || ''}`.toLowerCase();
       if (!hay.includes(state.search)) return false;
     }
     return true;
@@ -370,6 +373,19 @@ function displayTeam(feedTeam, token) {
   if (feedTeam && !isPlaceholder(feedTeam.name)) return { name: feedTeam.name, crest: feedTeam.crest, tbd: false };
   if (token) return resolveSlot(token);
   return { name: feedTeam?.name || 'TBD', crest: null, tbd: true };
+}
+
+// Resolve a fixture's two teams the same way the bracket does: prefer the team
+// the feed has confirmed, otherwise compute it from the official R32 slot map +
+// current group standings. This lets the FIXTURES list fill in real teams (e.g.
+// "South Africa v Canada") the moment a group is decided, instead of showing TBD
+// until the data feed catches up. Each side is { name, crest, tbd }.
+function matchTeams(m) {
+  const slot = R32_SLOTS[m.utcDate]; // [homeToken, awayToken] for R32, else undefined
+  return {
+    home: displayTeam(m.home, slot?.[0]),
+    away: displayTeam(m.away, slot?.[1]),
+  };
 }
 
 // Rebuild the bracket from the full match list (independent of the fixture
@@ -491,7 +507,10 @@ function renderNowNext() {
   const host = el('#nowNext');
   const live = state.matches.filter((m) => isLive(m.status));
   const primary = live[0] || nextUpcoming();
-  const eng = nextUpcoming((m) => m.home.name === 'England' || m.away.name === 'England');
+  const eng = nextUpcoming((m) => {
+    const { home, away } = matchTeams(m); // catch England's knockout tie as soon as its slot resolves
+    return home.name === 'England' || away.name === 'England';
+  });
 
   const cards = [];
   if (primary) cards.push(nnCard(primary, isLive(primary.status) ? 'Live now' : 'Next up', isLive(primary.status)));
@@ -509,9 +528,10 @@ function nnCard(m, label, liveNow) {
   const meta = liveNow
     ? (m.status === 'PAUSED' ? 'Half-time' : 'Live')
     : `<span class="nn-countdown" data-kickoff="${m.utcDate}">${fmtDuration(new Date(m.utcDate).getTime() - Date.now())}</span>`;
+  const { home, away } = matchTeams(m); // show resolved teams in the strip too
   return `<div class="nn-item ${liveNow ? 'live' : ''}">
     <span class="nn-label">${liveNow ? '● ' : ''}${label}</span>
-    <span class="nn-teams">${nnTeam(m.home)}${score}${nnTeam(m.away)}</span>
+    <span class="nn-teams">${nnTeam(home)}${score}${nnTeam(away)}</span>
     <span class="nn-meta">${meta}</span>
     <span class="nn-chan">${channelBadge(m.channel)}</span>
   </div>`;
@@ -557,7 +577,8 @@ function matchCard(m) {
       </div>`)
     .join('');
 
-  const faved = favs.has(m.home.name) || favs.has(m.away.name);
+  const { home, away } = matchTeams(m); // resolve knockout slots to real teams as group results land
+  const faved = favs.has(home.name) || favs.has(away.name);
   const showScore = isPlayed(m.status) && m.score?.home != null;
   const live = isLive(m.status);
   // Highlight the leading side once a result exists.
@@ -565,8 +586,8 @@ function matchCard(m) {
   const winAway = showScore && m.score.away > m.score.home;
   return `<article class="match ${faved ? 'is-fav' : ''} ${live ? 'is-live' : ''}">
     <div class="match-teams">
-      ${teamRow(m.home, showScore ? m.score.home : null, winHome)}
-      ${teamRow(m.away, showScore ? m.score.away : null, winAway)}
+      ${teamRow(home, showScore ? m.score.home : null, winHome)}
+      ${teamRow(away, showScore ? m.score.away : null, winAway)}
     </div>
     <div class="channels">${channelBadge(m.channel)}</div>
     <div class="match-times">${times}</div>
@@ -603,7 +624,7 @@ function teamRow(team, score, winner) {
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
-  const canFav = !isPlaceholder(team.name);
+  const canFav = !team.tbd && !isPlaceholder(team.name);
   const star = canFav
     ? `<button class="star ${favs.has(team.name) ? 'on' : ''}" data-team="${team.name}" title="Favourite ${team.name}" aria-label="Favourite ${team.name}">${favs.has(team.name) ? '★' : '☆'}</button>`
     : '';
