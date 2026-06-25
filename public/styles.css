@@ -9,6 +9,7 @@
   --accent-soft: #f2cf6b;
   --accent-2: #4f8cff;
   --live: #ff5a6a;
+  --qualified: #2fbe6e;      /* through to the knockouts */
   --radius: 16px;
   --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
   font-size: 16px;
@@ -249,6 +250,21 @@ body {
 .group-table tr.qualify { position: relative; }
 .group-table tr.qualify .pos { color: var(--accent); font-weight: 700; }
 .group-table tr.fav .team-cell span { color: var(--accent); font-weight: 600; }
+
+/* Teams that have mathematically secured a top-two (knockout) spot. */
+.group-table tr.clinched { background: rgba(47, 190, 110, 0.13); }
+.group-table tr.clinched .pos { color: var(--qualified); font-weight: 700; }
+.q-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 4px;
+  background: var(--qualified); color: #06140b;
+  font-size: 0.62rem; font-weight: 800; line-height: 1; letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.standings-legend {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin: 10px 2px 0; font-size: 0.72rem; color: var(--text-dim);
+}
 
 .day-heading {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px;

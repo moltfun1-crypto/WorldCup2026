@@ -108,32 +108,64 @@ async function loadStandings() {
   } catch { /* keep previous */ }
 }
 
+// Teams whose top-two (knockout) qualification is mathematically secured. The
+// check is conservative — it assumes a team takes 0 from its remaining games
+// while every rival wins all of theirs (rivals also meet each other, so this
+// can never flag a team that isn't truly through). Once the group is complete
+// the feed's final order has already settled tiebreaks, so the top two are in
+// outright. (Best-third-place qualifiers span groups and aren't computed here.)
+function qualifiedNames(g) {
+  const rows = g.table || [];
+  if (rows.length < 2) return new Set();
+  const perTeam = rows.length - 1; // round-robin games per team (3 in a 4-team group)
+  const out = new Set();
+  if (rows.every((r) => r.played >= perTeam)) {
+    rows.filter((r) => r.pos <= 2 && !isPlaceholder(r.name)).forEach((r) => out.add(r.name));
+    return out;
+  }
+  for (const x of rows) {
+    if (isPlaceholder(x.name)) continue;
+    // Worst case for x: 0 more points; each rival reaches its theoretical max.
+    const threats = rows.filter((y) => y !== x && y.points + 3 * (perTeam - y.played) >= x.points).length;
+    if (threats <= 1) out.add(x.name);
+  }
+  return out;
+}
+
 function renderStandings(groups) {
   el('#standings').innerHTML = groups
-    .map(
-      (g) => `<div class="group-table">
+    .map((g) => {
+      const through = qualifiedNames(g); // recomputed each refresh → live
+      return `<div class="group-table">
         <h3>${g.group}</h3>
         <table>
           <thead><tr><th></th><th class="tl">Team</th><th>P</th><th>GD</th><th>Pts</th></tr></thead>
           <tbody>
             ${g.table
-              .map(
-                (r, i) => `<tr class="${i < 2 ? 'qualify' : ''} ${favs.has(r.name) ? 'fav' : ''}">
+              .map((r, i) => {
+                const fav = favs.has(r.name);
+                const q = through.has(r.name);
+                // Real nations are clickable to filter the fixtures; placeholders aren't.
+                const name = isPlaceholder(r.name)
+                  ? `<span>${r.name}</span>`
+                  : `<span class="team-name team-link" data-filter="${r.name}" role="button" tabindex="0" title="Show ${r.name} fixtures">${fav ? '★ ' : ''}${r.name}</span>`;
+                return `<tr class="${i < 2 ? 'qualify' : ''} ${q ? 'clinched' : ''} ${fav ? 'fav' : ''}">
                   <td class="pos">${r.pos}</td>
                   <td class="tl team-cell">
                     ${r.crest ? `<img src="${r.crest}" alt="" loading="lazy" />` : '<span class="placeholder"></span>'}
-                    <span>${favs.has(r.name) ? '★ ' : ''}${r.name}</span>
+                    ${name}
+                    ${q ? '<b class="q-badge" title="Qualified for the knockout stage">Q</b>' : ''}
                   </td>
                   <td>${r.played}</td>
                   <td>${r.gd > 0 ? '+' + r.gd : r.gd}</td>
                   <td class="pts">${r.points}</td>
-                </tr>`
-              )
+                </tr>`;
+              })
               .join('')}
           </tbody>
         </table>
-      </div>`
-    )
+      </div>`;
+    })
     .join('');
 }
 
@@ -209,6 +241,21 @@ function bindControls() {
   el('#matchList').addEventListener('keydown', (e) => {
     const link = e.target.closest('.team-link');
     if (link && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); applyNationFilter(link.dataset.filter); }
+  });
+
+  // Click a nation in the group tables to see its fixtures (same as the list).
+  // On mobile this also flips to the Fixtures view so the filtered list is visible.
+  el('#standings').addEventListener('click', (e) => {
+    const link = e.target.closest('.team-link');
+    if (link) { setView('fixtures'); applyNationFilter(link.dataset.filter); }
+  });
+  el('#standings').addEventListener('keydown', (e) => {
+    const link = e.target.closest('.team-link');
+    if (link && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      setView('fixtures');
+      applyNationFilter(link.dataset.filter);
+    }
   });
 
   // "Show all" clears every active filter.
