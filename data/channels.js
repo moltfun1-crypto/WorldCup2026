@@ -132,10 +132,12 @@ export const groupMatches = [
 ];
 
 // ---------------------------------------------------------------------------
-// Knockout placeholders. Teams unknown until the group stage ends, so we show
-// bracket-style participants like other listings sites do. Broadcaster rule
-// (announced split): Round of 32, Round of 16 & Semi-finals → BBC;
-// Quarter-finals → ITV; Final → BBC & ITV simulcast.
+// Knockout placeholders (fallback only — used when no API key is set). Teams are
+// unknown until the group stage ends, so we show bracket-style participants like
+// other listings sites do. Channels are left null ("TBC") because the BBC/ITV
+// split is decided match-by-match, not per round; with the live feed the real
+// confirmed channels come from KNOCKOUT_CHANNELS above. Only the Final's
+// simulcast is fixed in advance.
 // ---------------------------------------------------------------------------
 function ko(id, date, time, stage, home, away, venue, channel) {
   return {
@@ -152,32 +154,32 @@ function ko(id, date, time, stage, home, away, venue, channel) {
 }
 
 export const knockoutMatches = [
-  // Round of 32 (28 Jun – 3 Jul) — BBC. Bracket slots shown as placeholders.
+  // Round of 32 — channel TBC (confirmed split lives in KNOCKOUT_CHANNELS).
   ...['1A v 3(C/D/F/G/H)', '1C v 1F', '1E v 2(A/B/C/D)', '1G v 2(A/E/H/I)',
       '1I v 2L', '1K v 2(E/H/I/J)', '2B v 2J', '2D v 2K',
       '1B v 3(E/F/G/I/J)', '1D v 2F', '1F v 2C', '1H v 2(B/E/F/I)',
       '1J v 2H', '1L v 2(C/D/F/G)', '2A v 2I', '1(A…) v 3(…)'].map((slot, i) =>
     ko(100 + i, ['2026-06-28','2026-06-29','2026-06-30','2026-07-01','2026-07-02','2026-07-03'][i % 6], '20:00',
-       'Round of 32', `Winner / Runner-up`, slot, 'Knockout venue — TBD', 'BBC One')),
+       'Round of 32', `Winner / Runner-up`, slot, 'Knockout venue — TBD', null)),
 
-  // Round of 16 (4–7 Jul) — BBC
+  // Round of 16 — channel TBC
   ...Array.from({ length: 8 }, (_, i) =>
     ko(120 + i, ['2026-07-04','2026-07-04','2026-07-05','2026-07-05','2026-07-06','2026-07-06','2026-07-07','2026-07-07'][i], '20:00',
-       'Round of 16', `Winner R32 (${i * 2 + 1})`, `Winner R32 (${i * 2 + 2})`, 'Knockout venue — TBD', 'BBC One')),
+       'Round of 16', `Winner R32 (${i * 2 + 1})`, `Winner R32 (${i * 2 + 2})`, 'Knockout venue — TBD', null)),
 
-  // Quarter-finals (9–11 Jul) — ITV
+  // Quarter-finals — channel TBC
   ...Array.from({ length: 4 }, (_, i) =>
     ko(140 + i, ['2026-07-09','2026-07-10','2026-07-10','2026-07-11'][i], '20:00',
-       'Quarter-final', `Winner R16 (${i * 2 + 1})`, `Winner R16 (${i * 2 + 2})`, 'Knockout venue — TBD', 'ITV1')),
+       'Quarter-final', `Winner R16 (${i * 2 + 1})`, `Winner R16 (${i * 2 + 2})`, 'Knockout venue — TBD', null)),
 
-  // Semi-finals (14–15 Jul) — BBC
-  ko(160, '2026-07-14', '20:00', 'Semi-final', 'Winner QF1', 'Winner QF2', 'Dallas', 'BBC One'),
-  ko(161, '2026-07-15', '20:00', 'Semi-final', 'Winner QF3', 'Winner QF4', 'Atlanta', 'BBC One'),
+  // Semi-finals — channel TBC
+  ko(160, '2026-07-14', '20:00', 'Semi-final', 'Winner QF1', 'Winner QF2', 'Dallas', null),
+  ko(161, '2026-07-15', '20:00', 'Semi-final', 'Winner QF3', 'Winner QF4', 'Atlanta', null),
 
-  // Third-place play-off (18 Jul)
-  ko(162, '2026-07-18', '20:00', 'Third-place play-off', 'Loser SF1', 'Loser SF2', 'Miami', 'BBC One'),
+  // Third-place play-off — channel TBC
+  ko(162, '2026-07-18', '20:00', 'Third-place play-off', 'Loser SF1', 'Loser SF2', 'Miami', null),
 
-  // Final (19 Jul) — BBC & ITV
+  // Final (19 Jul) — confirmed BBC One + ITV1 simulcast
   ko(163, '2026-07-19', '20:00', 'Final', 'Winner SF1', 'Winner SF2', 'MetLife Stadium, New York / New Jersey', 'BBC & ITV'),
 ];
 
@@ -224,6 +226,40 @@ export function channelForTeams(home, away) {
 }
 export function venueForTeams(home, away) {
   return venueIndex[teamKey(home, away)] || venueIndex[teamKey(away, home)] || null;
+}
+
+// Confirmed UK broadcaster for knockout matches, keyed by UTC kickoff (the stable
+// join key with the live feed). IMPORTANT: there is no per-round rule — the
+// BBC/ITV split is decided match-by-match and only announced as the bracket fills.
+// As of the Round of 32, the ONLY confirmed channels are:
+//   • the 16 Round-of-32 ties (jointly announced 8 BBC One / 8 ITV1), and
+//   • the Final (a BBC One + ITV1 simulcast).
+// The Round of 16, quarter-finals, semi-finals and third-place play-off are NOT
+// assigned yet, so they are deliberately absent here → they render as "TBC"
+// rather than a wrong guess. Add entries as BBC/ITV confirm later rounds.
+// Sources: BBC/ITV joint Round-of-32 announcement (Broadcast, TVZone UK,
+// Yahoo Sport, 101GreatGoals), cross-checked against the football-data.org feed.
+const KNOCKOUT_CHANNELS = {
+  '2026-06-28T19:00:00Z': 'ITV1',      // South Africa v Canada
+  '2026-06-29T17:00:00Z': 'ITV1',      // Brazil v Japan
+  '2026-06-29T20:30:00Z': 'BBC One',   // Germany v Paraguay
+  '2026-06-30T01:00:00Z': 'ITV1',      // Netherlands v Morocco
+  '2026-06-30T17:00:00Z': 'BBC One',   // Ivory Coast v Norway
+  '2026-06-30T21:00:00Z': 'ITV1',      // France v Sweden
+  '2026-07-01T01:00:00Z': 'ITV1',      // Mexico v Ecuador
+  '2026-07-01T16:00:00Z': 'BBC One',   // England v DR Congo
+  '2026-07-01T20:00:00Z': 'ITV1',      // Belgium v Senegal
+  '2026-07-02T00:00:00Z': 'BBC One',   // United States v Bosnia & Herzegovina
+  '2026-07-02T19:00:00Z': 'BBC One',   // Spain v Austria
+  '2026-07-02T23:00:00Z': 'BBC One',   // Portugal v Croatia
+  '2026-07-03T03:00:00Z': 'BBC One',   // Switzerland v Algeria
+  '2026-07-03T18:00:00Z': 'BBC One',   // Australia v Egypt
+  '2026-07-03T22:00:00Z': 'ITV1',      // Argentina v Cape Verde
+  '2026-07-04T01:30:00Z': 'ITV1',      // Colombia v Ghana
+  '2026-07-19T19:00:00Z': 'BBC & ITV', // Final (simulcast)
+};
+export function knockoutChannelForDate(utcDate) {
+  return KNOCKOUT_CHANNELS[utcDate] || null;
 }
 
 // Flag URL helper shared with the server.

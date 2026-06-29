@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { channelForTeams, venueForTeams, fallbackMatches, placeholderStandings } from './data/channels.js';
+import { channelForTeams, venueForTeams, knockoutChannelForDate, fallbackMatches, placeholderStandings } from './data/channels.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -16,19 +16,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let cache = { at: 0, data: null };
 let standingsCache = { at: 0, data: null };
-
-// UK channel for a knockout match, from the announced round allocation:
-// Round of 32, Round of 16 & Semi-finals → BBC; Quarter-finals → ITV;
-// Third-place play-off → BBC; Final → BBC & ITV simulcast.
-function stageChannel(stageRaw) {
-  const s = (stageRaw || '').toUpperCase();
-  if (!s || s.includes('GROUP')) return null;
-  if (s.includes('QUARTER')) return 'ITV1';
-  if (s.includes('THIRD')) return 'BBC One';
-  if (s.includes('FINAL')) return s.includes('SEMI') ? 'BBC One' : 'BBC & ITV';
-  if (s.includes('SEMI')) return 'BBC One';
-  return 'BBC One'; // Round of 32 / Round of 16 / Last 16 etc.
-}
 
 // "GROUP_L" → "Group L", "LAST_16" → "Last 16", "QUARTER_FINALS" → "Quarter Finals".
 function prettyStage(raw) {
@@ -66,9 +53,10 @@ function shape(match, source) {
     },
     // Free API tier omits venue — backfill from bundled schedule by teams.
     venue: match.venue || venueForTeams(home, away),
-    // Prefer the channel baked into bundled data; otherwise look up by teams;
-    // for knockout fixtures fall back to the round-based allocation.
-    channel: match.channel || channelForTeams(home, away) || stageChannel(match.stage || match.group),
+    // Prefer the channel baked into bundled data; otherwise look up group ties by
+    // teams, and knockout ties by kickoff time (only R32 + Final are confirmed —
+    // everything else stays null → "TBC" rather than a fabricated guess).
+    channel: match.channel || channelForTeams(home, away) || knockoutChannelForDate(match.utcDate),
     source,
   };
 }

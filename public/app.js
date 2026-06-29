@@ -388,48 +388,76 @@ function render() {
 }
 
 // --- Knockout bracket -------------------------------------------------------
-// Map a match's round label (the prettified `group` field) to a bracket stage.
-// Order matters: "Semi Finals"/"Quarter Finals"/"Third Place" all contain
-// "final"-ish words, so the more specific rounds are tested first.
-function koStage(group) {
-  const s = (group || '').toLowerCase();
-  if (/third|3rd/.test(s)) return 'third';
-  if (/quarter|1\/4/.test(s)) return 'qf';
-  if (/semi|1\/2/.test(s)) return 'sf';
-  if (/last 32|round of 32|1\/16/.test(s)) return 'r32';
-  if (/last 16|round of 16|1\/8/.test(s)) return 'r16';
-  if (/\bfinal\b/.test(s)) return 'final';
-  return null; // group stage / unknown
-}
+// The full WC2026 knockout tree, keyed by UTC kickoff (the stable join key with
+// the live feed). Each node names the two feeders that supply its teams:
+//   • Round of 32 feeders are group-position slot tokens — '1A' (winner Group A),
+//     '2B' (runner-up Group B) or '3' (a third-placed team).
+//   • Round of 16 → Final feeders reference an earlier node: 'W:m76' (winner of
+//     match 76) or 'L:m101' (loser, used only by the third-place play-off).
+// Encoding the feeders lets the bracket resolve later-round teams from earlier
+// winners AND lay every round out on the correct side of the draw — instead of
+// just date-sorting each column, which scattered the two halves. Verified
+// team-by-team against the football-data.org feed + the Wikipedia knockout
+// bracket (R32 slots, R16/QF/SF feeders and every kickoff time).
+const BRACKET = {
+  // Round of 32 — group-position slots (resolved from the standings).
+  m73: { stage: 'r32', date: '2026-06-28T19:00:00Z', feed: ['2A', '2B'] },
+  m74: { stage: 'r32', date: '2026-06-29T20:30:00Z', feed: ['1E', '3'] },
+  m75: { stage: 'r32', date: '2026-06-30T01:00:00Z', feed: ['1F', '2C'] },
+  m76: { stage: 'r32', date: '2026-06-29T17:00:00Z', feed: ['1C', '2F'] },
+  m77: { stage: 'r32', date: '2026-06-30T21:00:00Z', feed: ['1I', '3'] },
+  m78: { stage: 'r32', date: '2026-06-30T17:00:00Z', feed: ['2E', '2I'] },
+  m79: { stage: 'r32', date: '2026-07-01T01:00:00Z', feed: ['1A', '3'] },
+  m80: { stage: 'r32', date: '2026-07-01T16:00:00Z', feed: ['1L', '3'] },
+  m81: { stage: 'r32', date: '2026-07-02T00:00:00Z', feed: ['1D', '3'] },
+  m82: { stage: 'r32', date: '2026-07-01T20:00:00Z', feed: ['1G', '3'] },
+  m83: { stage: 'r32', date: '2026-07-02T23:00:00Z', feed: ['2K', '2L'] },
+  m84: { stage: 'r32', date: '2026-07-02T19:00:00Z', feed: ['1H', '2J'] },
+  m85: { stage: 'r32', date: '2026-07-03T03:00:00Z', feed: ['1B', '3'] },
+  m86: { stage: 'r32', date: '2026-07-03T22:00:00Z', feed: ['1J', '2H'] },
+  m87: { stage: 'r32', date: '2026-07-04T01:30:00Z', feed: ['1K', '3'] },
+  m88: { stage: 'r32', date: '2026-07-03T18:00:00Z', feed: ['2D', '2G'] },
+  // Round of 16 — winners of the Round-of-32 ties.
+  m89: { stage: 'r16', date: '2026-07-04T21:00:00Z', feed: ['W:m74', 'W:m77'] },
+  m90: { stage: 'r16', date: '2026-07-04T17:00:00Z', feed: ['W:m73', 'W:m75'] },
+  m91: { stage: 'r16', date: '2026-07-05T20:00:00Z', feed: ['W:m76', 'W:m78'] },
+  m92: { stage: 'r16', date: '2026-07-06T00:00:00Z', feed: ['W:m79', 'W:m80'] },
+  m93: { stage: 'r16', date: '2026-07-06T19:00:00Z', feed: ['W:m83', 'W:m84'] },
+  m94: { stage: 'r16', date: '2026-07-07T00:00:00Z', feed: ['W:m81', 'W:m82'] },
+  m95: { stage: 'r16', date: '2026-07-07T16:00:00Z', feed: ['W:m86', 'W:m88'] },
+  m96: { stage: 'r16', date: '2026-07-07T20:00:00Z', feed: ['W:m85', 'W:m87'] },
+  // Quarter-finals.
+  m97:  { stage: 'qf', date: '2026-07-09T20:00:00Z', feed: ['W:m89', 'W:m90'] },
+  m98:  { stage: 'qf', date: '2026-07-10T19:00:00Z', feed: ['W:m93', 'W:m94'] },
+  m99:  { stage: 'qf', date: '2026-07-11T21:00:00Z', feed: ['W:m91', 'W:m92'] },
+  m100: { stage: 'qf', date: '2026-07-12T01:00:00Z', feed: ['W:m95', 'W:m96'] },
+  // Semi-finals.
+  m101: { stage: 'sf', date: '2026-07-14T19:00:00Z', feed: ['W:m97', 'W:m98'] },
+  m102: { stage: 'sf', date: '2026-07-15T19:00:00Z', feed: ['W:m99', 'W:m100'] },
+  // Third-place play-off + Final.
+  m103: { stage: 'third', date: '2026-07-18T21:00:00Z', feed: ['L:m101', 'L:m102'] },
+  m104: { stage: 'final', date: '2026-07-19T19:00:00Z', feed: ['W:m101', 'W:m102'] },
+};
 
-const KO_COLUMNS = [
-  ['r32', 'Round of 32'], ['r16', 'Round of 16'], ['qf', 'Quarter-finals'],
-  ['sf', 'Semi-finals'], ['final', 'Final'],
+// Column order top→bottom so adjacent pairs feed the same next-round tie and the
+// draw's two halves line up (France/Netherlands… top, England/Brazil… bottom).
+// The third-place play-off sits outside the tree and is rendered separately.
+const BRACKET_COLUMNS = [
+  ['r32', 'Round of 32', ['m74','m77','m73','m75','m83','m84','m81','m82','m76','m78','m79','m80','m86','m88','m85','m87']],
+  ['r16', 'Round of 16', ['m89','m90','m93','m94','m91','m92','m95','m96']],
+  ['qf', 'Quarter-finals', ['m97','m98','m99','m100']],
+  ['sf', 'Semi-finals', ['m101','m102']],
+  ['final', 'Final', ['m104']],
 ];
 
-// Official WC2026 Round-of-32 bracket, keyed by UTC kickoff (each entry matches
-// exactly one feed card). Each slot token is the group position that feeds it:
-// '1A' = winner of Group A, '2B' = runner-up of Group B, '3' = a third-placed
-// team (which group isn't fixed until the group stage ends, so it stays a label
-// until the feed fills it). Source: FIFA schedule / Wikipedia knockout bracket.
-const R32_SLOTS = {
-  '2026-06-28T19:00:00Z': ['2A', '2B'],   // M73
-  '2026-06-29T17:00:00Z': ['1C', '2F'],   // M76
-  '2026-06-29T20:30:00Z': ['1E', '3'],    // M74  (1E v 3rd)
-  '2026-06-30T01:00:00Z': ['1F', '2C'],   // M75
-  '2026-06-30T17:00:00Z': ['2E', '2I'],   // M78
-  '2026-06-30T21:00:00Z': ['1I', '3'],    // M77
-  '2026-07-01T01:00:00Z': ['1A', '3'],    // M79
-  '2026-07-01T16:00:00Z': ['1L', '3'],    // M80
-  '2026-07-01T20:00:00Z': ['1G', '3'],    // M82
-  '2026-07-02T00:00:00Z': ['1D', '3'],    // M81
-  '2026-07-02T19:00:00Z': ['1H', '2J'],   // M84
-  '2026-07-02T23:00:00Z': ['2K', '2L'],   // M83
-  '2026-07-03T03:00:00Z': ['1B', '3'],    // M85
-  '2026-07-03T18:00:00Z': ['2D', '2G'],   // M88
-  '2026-07-03T22:00:00Z': ['1J', '2H'],   // M86
-  '2026-07-04T01:30:00Z': ['1K', '3'],    // M87
-};
+// Which bracket node owns a given kickoff time — joins the feed to the tree.
+const NODE_BY_DATE = Object.fromEntries(
+  Object.entries(BRACKET).map(([id, n]) => [n.date, { id, ...n }])
+);
+// The live feed card for a bracket node, matched on its kickoff time.
+function feedMatchForNode(id) {
+  return state.matches.find((m) => m.utcDate === BRACKET[id].date) || null;
+}
 
 // Resolve a bracket slot to a real team once its group has finished, otherwise
 // to a readable placeholder ("Winner A" / "Runner-up B" / "3rd-place team").
@@ -445,75 +473,94 @@ function resolveSlot(token) {
   return { name: `${pos === 1 ? 'Winner' : 'Runner-up'} ${grp}`, crest: null, tbd: true };
 }
 
-// Prefer the team the feed has confirmed; fall back to the slot resolver so the
-// bracket shows meaningful labels (and early teams) before the feed catches up.
-function displayTeam(feedTeam, token) {
-  if (feedTeam && !isPlaceholder(feedTeam.name)) return { name: feedTeam.name, crest: feedTeam.crest, tbd: false };
-  if (token) return resolveSlot(token);
-  return { name: feedTeam?.name || 'TBD', crest: null, tbd: true };
+// Resolve one side (i = 0 home / 1 away) of a bracket node to { name, crest, tbd }.
+// Order of trust: (1) the team the live feed has already confirmed for this match;
+// (2) for a Round-of-32 node, its group-position slot from the standings; (3) for
+// later rounds, the winner/loser of the feeder tie once it's decided; (4) failing
+// all that, a placeholder ("Brazil/Japan", "3rd-place team", …).
+function resolveNodeSide(id, i) {
+  const node = BRACKET[id];
+  const fm = feedMatchForNode(id);
+  if (fm) {
+    const t = i === 0 ? fm.home : fm.away;
+    if (t && t.name && !isPlaceholder(t.name)) return { name: t.name, crest: t.crest, tbd: false };
+  }
+  const ref = node.feed[i];
+  if (!ref.includes(':')) return resolveSlot(ref); // R32 slot token ('1A'/'2B'/'3')
+  const [kind, fid] = ref.split(':');              // 'W:m76' (winner) / 'L:m101' (loser)
+  const decided = decideNode(fid);
+  if (decided) return { ...(kind === 'W' ? decided.winner : decided.loser), tbd: false };
+  return { name: feederLabel(fid), crest: null, tbd: true };
 }
 
-// Resolve a fixture's two teams the same way the bracket does: prefer the team
-// the feed has confirmed, otherwise compute it from the official R32 slot map +
-// current group standings. This lets the FIXTURES list fill in real teams (e.g.
-// "South Africa v Canada") the moment a group is decided, instead of showing TBD
-// until the data feed catches up. Each side is { name, crest, tbd }.
+// Winner + loser of a node's tie, or null until it's been played to a result.
+function decideNode(id) {
+  const fm = feedMatchForNode(id);
+  if (!fm || !isPlayed(fm.status) || fm.score?.home == null) return null;
+  if (fm.score.home === fm.score.away) return null; // level / not yet separated
+  const a = resolveNodeSide(id, 0), b = resolveNodeSide(id, 1);
+  const homeWon = fm.score.home > fm.score.away;
+  return { winner: homeWon ? a : b, loser: homeWon ? b : a };
+}
+
+// Compact label for an undecided feeder, e.g. "Brazil/Japan" once both its teams
+// are known (so a Round-of-16 slot reads "winner of Brazil v Japan"); else "TBD".
+function feederLabel(id) {
+  const a = resolveNodeSide(id, 0), b = resolveNodeSide(id, 1);
+  const known = (t) => t && !t.tbd && !isPlaceholder(t.name);
+  return known(a) && known(b) ? `${a.name}/${b.name}` : 'TBD';
+}
+
+// Resolve a fixture's two teams the same way the bracket does (used by the
+// fixtures list, the now/next strip and the search/nation filters), so a decided
+// knockout tie shows its real teams the moment results land. Group ties pass
+// straight through. Each side is { name, crest, tbd }.
 function matchTeams(m) {
-  const slot = R32_SLOTS[m.utcDate]; // [homeToken, awayToken] for R32, else undefined
-  return {
-    home: displayTeam(m.home, slot?.[0]),
-    away: displayTeam(m.away, slot?.[1]),
-  };
+  const node = NODE_BY_DATE[m.utcDate];
+  if (node) return { home: resolveNodeSide(node.id, 0), away: resolveNodeSide(node.id, 1) };
+  return { home: teamObj(m.home), away: teamObj(m.away) };
+}
+function teamObj(t) {
+  if (t && t.name && !isPlaceholder(t.name)) return { name: t.name, crest: t.crest, tbd: false };
+  return { name: t?.name || 'TBD', crest: null, tbd: true };
 }
 
-// Rebuild the bracket from the full match list (independent of the fixture
-// filters). Runs on every refresh, so teams + scores fill in automatically.
+// Rebuild the bracket as a proper tree: a fixed column order (so the draw's two
+// halves line up) with teams resolved up the bracket from live results. Runs on
+// every refresh, so teams + scores fill in automatically.
 function renderBracket() {
   const host = el('#bracket');
   if (!host) return;
-  const buckets = { r32: [], r16: [], qf: [], sf: [], final: [], third: [] };
-  for (const m of state.matches) {
-    const st = koStage(m.group);
-    if (st) buckets[st].push(m);
-  }
-  for (const k of Object.keys(buckets)) {
-    buckets[k].sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate) || (a.id > b.id ? 1 : -1));
-  }
-
-  if (!KO_COLUMNS.some(([k]) => buckets[k].length) && !buckets.third.length) {
-    host.innerHTML = `<p class="bracket-empty">Knockout fixtures appear here once the group stage is decided.</p>`;
-    return;
-  }
 
   let html = '<div class="bracket">';
-  for (const [k, label] of KO_COLUMNS) {
-    if (!buckets[k].length) continue;
-    html += `<div class="bk-round bk-${k}">
+  for (const [key, label, ids] of BRACKET_COLUMNS) {
+    html += `<div class="bk-round bk-${key}">
       <div class="bk-round-head">${label}</div>
-      <div class="bk-matches">${buckets[k].map(bkMatch).join('')}</div>
+      <div class="bk-matches">${ids.map(bkNode).join('')}</div>
     </div>`;
   }
   html += '</div>';
-  if (buckets.third.length) {
-    html += `<div class="bk-third">
-      <div class="bk-round-head">Third-place play-off</div>
-      ${buckets.third.map(bkMatch).join('')}
-    </div>`;
-  }
+  html += `<div class="bk-third">
+    <div class="bk-round-head">Third-place play-off</div>
+    ${bkNode('m103')}
+  </div>`;
   host.innerHTML = html;
 }
 
-function bkMatch(m) {
-  const played = isPlayed(m.status) && m.score?.home != null;
-  const live = isLive(m.status);
+// Render one bracket node: resolved teams from the tree, scores/status from the
+// feed card (matched by kickoff time), and the kickoff line when not yet played.
+function bkNode(id) {
+  const m = feedMatchForNode(id);
+  const date = m ? m.utcDate : BRACKET[id].date;
+  const played = m && isPlayed(m.status) && m.score?.home != null;
+  const live = m && isLive(m.status);
+  const home = resolveNodeSide(id, 0);
+  const away = resolveNodeSide(id, 1);
   const winH = played && m.score.home > m.score.away;
   const winA = played && m.score.away > m.score.home;
-  const slot = R32_SLOTS[m.utcDate]; // [homeToken, awayToken] for R32, else undefined
-  const home = displayTeam(m.home, slot?.[0]);
-  const away = displayTeam(m.away, slot?.[1]);
   const foot = live ? `<span class="bk-live">● Live</span>`
     : played ? `<span class="bk-ft">Full-time</span>`
-    : `<span class="bk-when">${fmtDateTiny(m.utcDate, 'Asia/Bangkok')} · ${fmtTime(m.utcDate, localZone.tz)} ${tzAbbr(localZone.tz)}</span>`;
+    : `<span class="bk-when">${fmtDateTiny(date, 'Asia/Bangkok')} · ${fmtTime(date, localZone.tz)} ${tzAbbr(localZone.tz)}</span>`;
   return `<div class="bk-match ${live ? 'is-live' : ''}">
     ${bkTeam(home, played ? m.score.home : null, winH)}
     ${bkTeam(away, played ? m.score.away : null, winA)}
