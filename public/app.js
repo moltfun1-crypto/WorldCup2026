@@ -493,13 +493,27 @@ function resolveNodeSide(id, i) {
   return { name: feederLabel(fid), crest: null, tbd: true };
 }
 
+// Which side won a knockout tie: true = home, false = away, null = undecided.
+// A tie level on goals is settled by the shootout (penalties), falling back to
+// the API's winner field — so penalty winners still advance and get highlighted.
+function winnerIsHome(score) {
+  if (!score || score.home == null) return null;
+  if (score.home > score.away) return true;
+  if (score.away > score.home) return false;
+  if (score.penalties && score.penalties.home != null)
+    return score.penalties.home > score.penalties.away;
+  if (score.winner === 'HOME_TEAM') return true;
+  if (score.winner === 'AWAY_TEAM') return false;
+  return null;
+}
+
 // Winner + loser of a node's tie, or null until it's been played to a result.
 function decideNode(id) {
   const fm = feedMatchForNode(id);
   if (!fm || !isPlayed(fm.status) || fm.score?.home == null) return null;
-  if (fm.score.home === fm.score.away) return null; // level / not yet separated
+  const homeWon = winnerIsHome(fm.score);
+  if (homeWon == null) return null; // level / not yet separated
   const a = resolveNodeSide(id, 0), b = resolveNodeSide(id, 1);
-  const homeWon = fm.score.home > fm.score.away;
   return { winner: homeWon ? a : b, loser: homeWon ? b : a };
 }
 
@@ -556,25 +570,36 @@ function bkNode(id) {
   const live = m && isLive(m.status);
   const home = resolveNodeSide(id, 0);
   const away = resolveNodeSide(id, 1);
-  const winH = played && m.score.home > m.score.away;
-  const winA = played && m.score.away > m.score.home;
+  const winH = played && winnerIsHome(m.score) === true;
+  const winA = played && winnerIsHome(m.score) === false;
+  const pens = played ? m.score.penalties : null;
   const foot = live ? `<span class="bk-live">● Live</span>`
-    : played ? `<span class="bk-ft">Full-time</span>`
+    : played ? `<span class="bk-ft">${ftLabel(m.score)}</span>`
     : `<span class="bk-when">${fmtDateTiny(date, 'Asia/Bangkok')} · ${fmtTime(date, localZone.tz)} ${tzAbbr(localZone.tz)}</span>`;
   return `<div class="bk-match ${live ? 'is-live' : ''}">
-    ${bkTeam(home, played ? m.score.home : null, winH)}
-    ${bkTeam(away, played ? m.score.away : null, winA)}
+    ${bkTeam(home, played ? m.score.home : null, winH, pens ? pens.home : null)}
+    ${bkTeam(away, played ? m.score.away : null, winA, pens ? pens.away : null)}
     <div class="bk-foot">${foot}</div>
   </div>`;
 }
 
-function bkTeam(team, score, winner) {
+// Bracket full-time label: a tie decided beyond 90 minutes says how.
+function ftLabel(score) {
+  if (score?.duration === 'PENALTY_SHOOTOUT') return 'Pens';
+  if (score?.duration === 'EXTRA_TIME') return 'AET';
+  return 'Full-time';
+}
+
+function bkTeam(team, score, winner, pen) {
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
+  const sc = score != null
+    ? `<span class="bk-score">${score}${pen != null ? `<span class="bk-pen">(${pen})</span>` : ''}</span>`
+    : '';
   return `<div class="bk-team ${winner ? 'win' : ''} ${team.tbd ? 'tbd' : ''}">
     ${flag}<span class="bk-name">${team.name}</span>
-    ${score != null ? `<span class="bk-score">${score}</span>` : ''}
+    ${sc}
   </div>`;
 }
 
@@ -706,13 +731,15 @@ function matchCard(m) {
   const faved = favs.has(home.name) || favs.has(away.name);
   const showScore = isPlayed(m.status) && m.score?.home != null;
   const live = isLive(m.status);
-  // Highlight the leading side once a result exists.
-  const winHome = showScore && m.score.home > m.score.away;
-  const winAway = showScore && m.score.away > m.score.home;
+  // Highlight the winning side once a result exists (penalty ties included).
+  const winHome = showScore && winnerIsHome(m.score) === true;
+  const winAway = showScore && winnerIsHome(m.score) === false;
+  const pens = showScore ? m.score.penalties : null;
   return `<article class="match ${faved ? 'is-fav' : ''} ${live ? 'is-live' : ''}">
     <div class="match-teams">
-      ${teamRow(home, showScore ? m.score.home : null, winHome)}
-      ${teamRow(away, showScore ? m.score.away : null, winAway)}
+      ${teamRow(home, showScore ? m.score.home : null, winHome, pens ? pens.home : null)}
+      ${teamRow(away, showScore ? m.score.away : null, winAway, pens ? pens.away : null)}
+      ${showScore ? deciderNote(m, home, away) : ''}
     </div>
     <div class="channels">${channelBadge(m.channel)}</div>
     <div class="match-times">${times}</div>
@@ -745,7 +772,22 @@ function compactTimes(m) {
   return html;
 }
 
-function teamRow(team, score, winner) {
+// One-line explainer under a knockout result decided beyond 90 minutes, e.g.
+// "After extra time · Morocco won 3–2 on penalties" or plain "After extra time".
+function deciderNote(m, home, away) {
+  const s = m.score;
+  if (s.penalties) {
+    const homeWon = winnerIsHome(s);
+    const winName = (homeWon ? home.name : away.name);
+    const wp = homeWon ? s.penalties.home : s.penalties.away;
+    const lp = homeWon ? s.penalties.away : s.penalties.home;
+    return `<div class="match-decider">After extra time · ${winName} won ${wp}–${lp} on penalties</div>`;
+  }
+  if (s.duration === 'EXTRA_TIME') return `<div class="match-decider">After extra time</div>`;
+  return '';
+}
+
+function teamRow(team, score, winner, pen) {
   const flag = team.crest
     ? `<img src="${team.crest}" alt="" loading="lazy" />`
     : `<span class="placeholder"></span>`;
@@ -757,7 +799,9 @@ function teamRow(team, score, winner) {
   const name = canFav
     ? `<span class="team-name team-link" data-filter="${team.name}" role="button" tabindex="0" title="Show ${team.name} fixtures">${team.name}</span>`
     : `<span class="team-name">${team.name}</span>`;
-  const scoreEl = score != null ? `<span class="score ${winner ? 'win' : ''}">${score}</span>` : '';
+  const scoreEl = score != null
+    ? `<span class="score ${winner ? 'win' : ''}">${score}${pen != null ? `<span class="pen">(${pen})</span>` : ''}</span>`
+    : '';
   return `<div class="team">${star}${flag}${name}${scoreEl}</div>`;
 }
 

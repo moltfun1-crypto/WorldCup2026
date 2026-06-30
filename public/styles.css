@@ -210,7 +210,9 @@ body {
 .bk-team.tbd .bk-name { color: var(--text-dim); font-style: italic; }
 .bk-team.win .bk-name { color: var(--accent); font-weight: 700; }
 .bk-score { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text); }
+.bk-score .bk-pen { margin-left: 2px; font-size: 0.7em; font-weight: 700; color: var(--text-dim); }
 .bk-team.win .bk-score { color: var(--accent); }
+.bk-team.win .bk-score .bk-pen { color: var(--accent-soft); }
 .bk-foot { font-size: 0.66rem; color: var(--text-dim); white-space: nowrap; }
 .bk-foot .bk-live { color: var(--live); font-weight: 700; }
 .bk-foot .bk-ft { color: var(--accent-soft); font-weight: 600; }
@@ -331,6 +333,8 @@ body {
   font-size: 1.05rem; color: var(--text-dim); min-width: 20px; text-align: right;
 }
 .score.win { color: var(--text); }
+.score .pen { margin-left: 3px; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); }
+.match-decider { font-size: 0.76rem; font-weight: 600; color: var(--text-dim); margin-top: 2px; }
 .match.is-live { border-color: rgba(255, 90, 106, 0.5); box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--live); }
 .match.is-live.is-fav { box-shadow: 0 10px 34px rgba(0,0,0,0.45), inset 3px 0 0 var(--live); }
 .star {

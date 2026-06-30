@@ -46,11 +46,12 @@ function shape(match, source) {
       crest: match.awayTeam?.crest || flagUrl(match.awayTeam?.code),
     },
     // Live/final score (null before kickoff). football-data keeps the running
-    // score in score.fullTime during play and after full time.
-    score: {
-      home: match.score?.fullTime?.home ?? null,
-      away: match.score?.fullTime?.away ?? null,
-    },
+    // score in score.fullTime during play and after full time — but for a tie
+    // settled on penalties it FOLDS THE SHOOTOUT INTO fullTime (e.g. a 1–1 a.e.t.
+    // tie won 3–2 on pens arrives as fullTime 4–3). scoreOf() peels the shootout
+    // back out so .home/.away is the goals (after-extra-time) score and exposes
+    // the penalties separately for the UI.
+    score: scoreOf(match.score),
     // Free API tier omits venue — backfill from bundled schedule by teams.
     venue: match.venue || venueForTeams(home, away),
     // Prefer the channel baked into bundled data; otherwise look up group ties by
@@ -58,6 +59,23 @@ function shape(match, source) {
     // everything else stays null → "TBC" rather than a fabricated guess).
     channel: match.channel || channelForTeams(home, away) || knockoutChannelForDate(match.utcDate),
     source,
+  };
+}
+
+// Normalise football-data's score block. For penalty ties fullTime includes the
+// shootout, so subtract penalties back out to get the goal (a.e.t.) score, and
+// surface penalties / duration / winner so the UI can show "1–1 · pens 3–4" and
+// still highlight the side that actually advanced when goals are level.
+function scoreOf(s) {
+  const ft = s?.fullTime || {};
+  const pk = s?.penalties;
+  const hasPk = pk && pk.home != null;
+  return {
+    home: ft.home != null ? (hasPk ? ft.home - pk.home : ft.home) : null,
+    away: ft.away != null ? (hasPk ? ft.away - pk.away : ft.away) : null,
+    penalties: hasPk ? { home: pk.home, away: pk.away } : null,
+    duration: s?.duration || null, // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
+    winner: s?.winner || null,     // HOME_TEAM | AWAY_TEAM | DRAW | null
   };
 }
 
