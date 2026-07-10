@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { channelForTeams, venueForTeams, knockoutChannelForDate, fallbackMatches, placeholderStandings } from './data/channels.js';
+import { channelForTeams, venueForTeams, knockoutChannelForTeams, knockoutChannelForDate, fallbackMatches, placeholderStandings } from './data/channels.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -55,9 +55,10 @@ function shape(match, source) {
     // Free API tier omits venue — backfill from bundled schedule by teams.
     venue: match.venue || venueForTeams(home, away),
     // Prefer the channel baked into bundled data; otherwise look up group ties by
-    // teams, and knockout ties by kickoff time (only R32 + Final are confirmed —
-    // everything else stays null → "TBC" rather than a fabricated guess).
-    channel: match.channel || channelForTeams(home, away) || knockoutChannelForDate(match.utcDate),
+    // teams, and knockout ties by team pair first (drift-proof) then kickoff time.
+    // Unconfirmed rounds stay null → "TBC" rather than a fabricated guess.
+    channel: match.channel || channelForTeams(home, away)
+      || knockoutChannelForTeams(home, away) || knockoutChannelForDate(match.utcDate),
     source,
   };
 }

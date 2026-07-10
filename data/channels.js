@@ -228,38 +228,74 @@ export function venueForTeams(home, away) {
   return venueIndex[teamKey(home, away)] || venueIndex[teamKey(away, home)] || null;
 }
 
-// Confirmed UK broadcaster for knockout matches, keyed by UTC kickoff (the stable
-// join key with the live feed). IMPORTANT: there is no per-round rule — the
-// BBC/ITV split is decided match-by-match and only announced as the bracket fills.
-// As of the Round of 32, the ONLY confirmed channels are:
-//   • the 16 Round-of-32 ties (jointly announced 8 BBC One / 8 ITV1), and
-//   • the Final (a BBC One + ITV1 simulcast).
-// The Round of 16, quarter-finals, semi-finals and third-place play-off are NOT
-// assigned yet, so they are deliberately absent here → they render as "TBC"
-// rather than a wrong guess. Add entries as BBC/ITV confirm later rounds.
-// Sources: BBC/ITV joint Round-of-32 announcement (Broadcast, TVZone UK,
-// Yahoo Sport, 101GreatGoals), cross-checked against the football-data.org feed.
-const KNOCKOUT_CHANNELS = {
-  '2026-06-28T19:00:00Z': 'ITV1',      // South Africa v Canada
-  '2026-06-29T17:00:00Z': 'ITV1',      // Brazil v Japan
-  '2026-06-29T20:30:00Z': 'BBC One',   // Germany v Paraguay
-  '2026-06-30T01:00:00Z': 'ITV1',      // Netherlands v Morocco
-  '2026-06-30T17:00:00Z': 'BBC One',   // Ivory Coast v Norway
-  '2026-06-30T21:00:00Z': 'ITV1',      // France v Sweden
-  '2026-07-01T01:00:00Z': 'ITV1',      // Mexico v Ecuador
-  '2026-07-01T16:00:00Z': 'BBC One',   // England v DR Congo
-  '2026-07-01T20:00:00Z': 'ITV1',      // Belgium v Senegal
-  '2026-07-02T00:00:00Z': 'BBC One',   // United States v Bosnia & Herzegovina
-  '2026-07-02T19:00:00Z': 'BBC One',   // Spain v Austria
-  '2026-07-02T23:00:00Z': 'BBC One',   // Portugal v Croatia
-  '2026-07-03T03:00:00Z': 'BBC One',   // Switzerland v Algeria
-  '2026-07-03T18:00:00Z': 'BBC One',   // Australia v Egypt
-  '2026-07-03T22:00:00Z': 'ITV1',      // Argentina v Cape Verde
-  '2026-07-04T01:30:00Z': 'ITV1',      // Colombia v Ghana
-  '2026-07-19T19:00:00Z': 'BBC & ITV', // Final (simulcast)
-};
+// Confirmed UK broadcaster for knockout ties. There is no per-round rule — the
+// BBC/ITV split is decided match-by-match and announced as the bracket fills, so
+// each tie is listed explicitly. Add rounds here as BBC/ITV confirm them.
+//
+// Each entry carries BOTH the kickoff time AND (once known) the team pair. We key
+// the lookup on the TEAM PAIR first and fall back to the time, because
+// football-data.org shifts kickoff times once teams are locked in — e.g. the
+// Mexico v Ecuador R32 tie moved 01:00→02:00Z and silently lost its channel under
+// the old time-only key. Team pairs don't drift, so they're the stable join key.
+//
+// Semi-finals, the third-place play-off and (team-wise) the Final are NOT listed:
+// their broadcasters aren't announced yet, so they render as "TBC" rather than a
+// wrong guess. The Final's simulcast is fixed in advance so it's kept by time.
+// Sources: BBC/ITV joint R32 announcement + R16/QF selections (Broadcast, TVZone
+// UK, Yahoo Sport, live-footballontv, 101GreatGoals), cross-checked vs the feed.
+const KNOCKOUT_CHANNEL_LIST = [
+  // Round of 32 — jointly announced, 8 BBC One / 8 ITV1.
+  { utc: '2026-06-28T19:00:00Z', home: 'South Africa',  away: 'Canada',                  channel: 'ITV1' },
+  { utc: '2026-06-29T17:00:00Z', home: 'Brazil',        away: 'Japan',                   channel: 'ITV1' },
+  { utc: '2026-06-29T20:30:00Z', home: 'Germany',       away: 'Paraguay',                channel: 'BBC One' },
+  { utc: '2026-06-30T01:00:00Z', home: 'Netherlands',   away: 'Morocco',                 channel: 'ITV1' },
+  { utc: '2026-06-30T17:00:00Z', home: 'Ivory Coast',   away: 'Norway',                  channel: 'BBC One' },
+  { utc: '2026-06-30T21:00:00Z', home: 'France',        away: 'Sweden',                  channel: 'ITV1' },
+  { utc: '2026-07-01T02:00:00Z', home: 'Mexico',        away: 'Ecuador',                 channel: 'ITV1' },
+  { utc: '2026-07-01T16:00:00Z', home: 'England',       away: 'DR Congo',                channel: 'BBC One' },
+  { utc: '2026-07-01T20:00:00Z', home: 'Belgium',       away: 'Senegal',                 channel: 'ITV1' },
+  { utc: '2026-07-02T00:00:00Z', home: 'United States', away: 'Bosnia and Herzegovina',  channel: 'BBC One' },
+  { utc: '2026-07-02T19:00:00Z', home: 'Spain',         away: 'Austria',                 channel: 'BBC One' },
+  { utc: '2026-07-02T23:00:00Z', home: 'Portugal',      away: 'Croatia',                 channel: 'BBC One' },
+  { utc: '2026-07-03T03:00:00Z', home: 'Switzerland',   away: 'Algeria',                 channel: 'BBC One' },
+  { utc: '2026-07-03T18:00:00Z', home: 'Australia',     away: 'Egypt',                   channel: 'BBC One' },
+  { utc: '2026-07-03T22:00:00Z', home: 'Argentina',     away: 'Cape Verde',              channel: 'ITV1' },
+  { utc: '2026-07-04T01:30:00Z', home: 'Colombia',      away: 'Ghana',                   channel: 'ITV1' },
+
+  // Round of 16 — 4 BBC One / 4 ITV1.
+  { utc: '2026-07-04T17:00:00Z', home: 'Canada',        away: 'Morocco',                 channel: 'ITV1' },
+  { utc: '2026-07-04T21:00:00Z', home: 'Paraguay',      away: 'France',                  channel: 'BBC One' },
+  { utc: '2026-07-05T20:00:00Z', home: 'Brazil',        away: 'Norway',                  channel: 'ITV1' },
+  { utc: '2026-07-06T01:00:00Z', home: 'Mexico',        away: 'England',                 channel: 'BBC One' },
+  { utc: '2026-07-06T19:00:00Z', home: 'Portugal',      away: 'Spain',                   channel: 'BBC One' },
+  { utc: '2026-07-07T00:00:00Z', home: 'United States', away: 'Belgium',                 channel: 'BBC One' },
+  { utc: '2026-07-07T16:00:00Z', home: 'Argentina',     away: 'Egypt',                   channel: 'ITV1' },
+  { utc: '2026-07-07T20:00:00Z', home: 'Switzerland',   away: 'Colombia',                channel: 'ITV1' },
+
+  // Quarter-finals — 1 BBC One / 3 ITV1.
+  { utc: '2026-07-09T20:00:00Z', home: 'France',        away: 'Morocco',                 channel: 'ITV1' },
+  { utc: '2026-07-10T19:00:00Z', home: 'Spain',         away: 'Belgium',                 channel: 'BBC One' },
+  { utc: '2026-07-11T21:00:00Z', home: 'Norway',        away: 'England',                 channel: 'ITV1' },
+  { utc: '2026-07-12T01:00:00Z', home: 'Argentina',     away: 'Switzerland',             channel: 'ITV1' },
+
+  // Final — BBC One + ITV1 simulcast (teams TBD until the semis finish).
+  { utc: '2026-07-19T19:00:00Z',                                                         channel: 'BBC & ITV' },
+];
+
+const knockoutChannelByTime = Object.fromEntries(
+  KNOCKOUT_CHANNEL_LIST.map((e) => [e.utc, e.channel])
+);
+const knockoutChannelByTeams = Object.fromEntries(
+  KNOCKOUT_CHANNEL_LIST.filter((e) => e.home && e.away).map((e) => [teamKey(e.home, e.away), e.channel])
+);
+
+// Prefer the team pair (drift-proof), fall back to the kickoff time.
+export function knockoutChannelForTeams(home, away) {
+  if (!home || !away) return null;
+  return knockoutChannelByTeams[teamKey(home, away)] || knockoutChannelByTeams[teamKey(away, home)] || null;
+}
 export function knockoutChannelForDate(utcDate) {
-  return KNOCKOUT_CHANNELS[utcDate] || null;
+  return knockoutChannelByTime[utcDate] || null;
 }
 
 // Flag URL helper shared with the server.
